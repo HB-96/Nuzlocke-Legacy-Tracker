@@ -5768,13 +5768,43 @@ async function ghPush(){
   updateGHNavStatus('syncing','↑');
   try{
     const existing=await ghGetFile(cfg);
+    // If remote is newer than our last sync, don't silently overwrite
+    if(existing&&existing.content._syncedAt&&state._syncedAt){
+      const remoteTime=new Date(existing.content._syncedAt).getTime();
+      const localTime=new Date(state._syncedAt).getTime();
+      if(remoteTime>localTime){updateGHNavStatus('err','⚠ Conflict');return;}
+    }
     const snap=JSON.parse(JSON.stringify(state));
     snap._syncedAt=new Date().toISOString();
-    await ghPutFile(cfg, snap, existing?.sha);
+    await ghPutFile(cfg,snap,existing?.sha);
+    state._syncedAt=snap._syncedAt;
+    _ls.setItem(SAVE_KEY,JSON.stringify(state));
     updateGHNavStatus('ok','✓ Synced');
   }catch(e){
-    console.error('GitHub push failed:',e);
-    updateGHNavStatus('err','✕ '+e.message.slice(0,40));
+    if(e.message.startsWith('409')){
+      // SHA stale — re-fetch and retry once if our save is newer
+      try{
+        const fresh=await ghGetFile(cfg);
+        const remoteTime=fresh&&fresh.content._syncedAt?new Date(fresh.content._syncedAt).getTime():0;
+        const localTime=state._syncedAt?new Date(state._syncedAt).getTime():Date.now();
+        if(localTime>=remoteTime){
+          const snap=JSON.parse(JSON.stringify(state));
+          snap._syncedAt=new Date().toISOString();
+          await ghPutFile(cfg,snap,fresh?.sha);
+          state._syncedAt=snap._syncedAt;
+          _ls.setItem(SAVE_KEY,JSON.stringify(state));
+          updateGHNavStatus('ok','✓ Synced');
+        }else{
+          updateGHNavStatus('err','⚠ Conflict');
+        }
+      }catch(e2){
+        console.error('GitHub push retry failed:',e2);
+        updateGHNavStatus('err','⚠ Conflict');
+      }
+    }else{
+      console.error('GitHub push failed:',e);
+      updateGHNavStatus('err','✕ '+e.message.slice(0,40));
+    }
   }
 }
 
@@ -5816,12 +5846,20 @@ async function ghForcePull(){
   }
 }
 
-// One-tap push — forces current state to GitHub
+// One-tap push — always fetches fresh SHA to avoid 409
 async function ghForcePush(){
   updateGHNavStatus('syncing','↑');
   try{
-    await ghPush();
+    const cfg=getGHConfig();
+    if(!cfg) throw new Error('Not connected.');
+    const existing=await ghGetFile(cfg);
+    const snap=JSON.parse(JSON.stringify(state));
+    snap._syncedAt=new Date().toISOString();
+    await ghPutFile(cfg,snap,existing?.sha);
+    state._syncedAt=snap._syncedAt;
+    _ls.setItem(SAVE_KEY,JSON.stringify(state));
     updateGHNavStatus('ok','✓ Pushed');
+    closeModal();
   }catch(e){
     updateGHNavStatus('err','✕ Error');
     alert('Push failed: '+e.message);
@@ -5846,26 +5884,51 @@ async function openGitHubModal(){
   document.getElementById('mt').textContent='☁️ GitHub Cloud Sync';
 
   if(isConnected){
-    // Show simple sync controls when already connected
+    // Show sync controls with timestamps
+    const fmt=d=>d?d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'Unknown';
+    const localTime=state._syncedAt?new Date(state._syncedAt):null;
     document.getElementById('mb').innerHTML=`
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="background:var(--caught-bg);border:1px solid var(--caught-border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--caught-text);">
           ✓ Connected to <strong>${cfg.owner}/${cfg.repo}</strong>
         </div>
-        <p style="font-size:12px;color:var(--muted);line-height:1.5;">Your save pushes automatically as you play (2 second delay). Use the buttons below to manually sync.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:10px 14px;">
+          <div><div style="font-weight:700;color:var(--text);margin-bottom:2px;">This device</div>${fmt(localTime)}</div>
+          <div><div style="font-weight:700;color:var(--text);margin-bottom:2px;">GitHub</div><span id="gh-remote-time">Checking...</span></div>
+        </div>
+        <div id="gh-conflict-warn"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <button onclick="ghForcePull()" style="background:var(--blue2);border:1px solid var(--blue);border-radius:8px;padding:14px;color:white;font-family:Raleway,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
             ⬇ Pull from GitHub
-            <div style="font-size:10px;font-weight:400;margin-top:3px;opacity:.8;">Load latest cloud save</div>
+            <div style="font-size:10px;font-weight:400;margin-top:3px;opacity:.8;">Overwrite this device</div>
           </button>
           <button onclick="ghForcePush()" style="background:var(--green2);border:1px solid var(--green);border-radius:8px;padding:14px;color:white;font-family:Raleway,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
             ↑ Push to GitHub
-            <div style="font-size:10px;font-weight:400;margin-top:3px;opacity:.8;">Save local → cloud now</div>
+            <div style="font-size:10px;font-weight:400;margin-top:3px;opacity:.8;">Overwrite cloud</div>
           </button>
         </div>
+        <p style="font-size:11px;color:var(--muted);line-height:1.5;margin:0;">Auto-pushes 2s after any change. If saves differ, choose which version to keep above.</p>
         <div id="gh-modal-status" style="font-size:11px;padding:8px 10px;border-radius:6px;display:none;"></div>
         <div style="padding-top:10px;border-top:1px solid var(--border);">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:8px;">CHANGE SETTINGS</div>`;
+    // Async: fetch remote timestamp and show conflict warning if needed
+    ghGetFile(cfg).then(remote=>{
+      const remoteEl=document.getElementById('gh-remote-time');
+      const warnEl=document.getElementById('gh-conflict-warn');
+      if(!remoteEl) return;
+      if(!remote){remoteEl.textContent='No save yet';return;}
+      const remoteTime=remote.content._syncedAt?new Date(remote.content._syncedAt):null;
+      remoteEl.textContent=fmt(remoteTime);
+      if(localTime&&remoteTime&&Math.abs(localTime-remoteTime)>5000){
+        const localNewer=localTime>remoteTime;
+        warnEl.innerHTML=`<div style="border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;border:1px solid ${localNewer?'var(--gold)':'var(--green)'};color:${localNewer?'var(--gold)':'var(--green)'};">
+          ${localNewer?'⚠ This device is newer — Push to update the cloud.':'⚠ GitHub is newer — Pull to get the latest progress.'}
+        </div>`;
+      }
+    }).catch(()=>{
+      const el=document.getElementById('gh-remote-time');
+      if(el) el.textContent='Could not fetch';
+    });
     // Fall through to render settings fields below
   } else {
     document.getElementById('mb').innerHTML=`

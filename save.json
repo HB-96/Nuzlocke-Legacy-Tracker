@@ -1,1 +1,1 @@
-{"currentGameIndex":0,"games":{"red":{"status":"active","encounters":[]}},"bans":{},"_syncedAt":"2026-03-22T10:55:25.711Z"}
+{"currentGameIndex":0,"games":{"red":{"status":"active","encounters":[{"route":"Starter","species":"bulbasaur","currentSpecies":"bulbasaur","nickname":"Leaf","status":"alive","evolutions":["bulbasaur","ivysaur","venusaur"],"shiny":false}]}},"bans":{},"_syncedAt":"2026-03-23T11:49:44.463Z"}

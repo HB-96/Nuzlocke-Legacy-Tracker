@@ -354,6 +354,12 @@ body.light .ec.dead .ec-spr{filter:grayscale(1) brightness(.85);}
 .tc-morning{background:#f5e6a3;border:1px solid #c8b84a;}
 .tc-day{background:#a8d8ea;border:1px solid #6ab0cc;}
 .tc-night{background:#6b5b9e;border:1px solid #4a3d7a;}
+.sc{width:8px;height:8px;border-radius:3px;display:inline-block;flex-shrink:0;}
+.sc-spring{background:#6abf6a;border:1px solid #4a9f4a;}
+.sc-summer{background:#f5c842;border:1px solid #c8a030;}
+.sc-autumn{background:#a0522d;border:1px solid #7a3a1a;}
+.sc-winter{background:#6ab0e8;border:1px solid #4a88c0;}
+.ptile-seasons{display:flex;gap:2px;justify-content:center;margin-top:2px;flex-wrap:wrap;}
 .ptile-skull{position:absolute;top:3px;right:4px;font-size:10px;opacity:.9;}
 .ptile-caught-check{position:absolute;top:3px;right:4px;font-size:10px;color:var(--green);}
 .ptile-trade{font-size:8px;color:var(--muted);text-align:center;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;}
@@ -576,14 +582,22 @@ body.light .reg-card.status-champion{background:#fffae0;border-color:#e0c060;}
       <div class="sec" style="margin-bottom:10px;">POKÉDEX REGISTRY</div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
         <input id="reg-search" class="fi" placeholder="Search Pokémon…" style="max-width:220px;" oninput="renderRegistry()"/>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="reg-filter-btn active" data-filter="all" onclick="setRegFilter(this,'all')">All</button>
-          <button class="reg-filter-btn" data-filter="caught" onclick="setRegFilter(this,'caught')">Caught</button>
-          <button class="reg-filter-btn" data-filter="alive" onclick="setRegFilter(this,'alive')">Alive</button>
-          <button class="reg-filter-btn" data-filter="dead" onclick="setRegFilter(this,'dead')">Fallen</button>
-          <button class="reg-filter-btn" data-filter="champion" onclick="setRegFilter(this,'champion')">Champions</button>
-          <button class="reg-filter-btn" data-filter="never" onclick="setRegFilter(this,'never')">Never Caught</button>
-        </div>
+        <select id="reg-game-filter" class="fi" style="max-width:200px;" onchange="renderRegistry()">
+          <option value="">All Games</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" id="reg-obtainable-only" onchange="renderRegistry()" style="cursor:pointer;"/>
+          Obtainable only
+        </label>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="reg-filter-btn active" data-filter="all" onclick="setRegFilter(this,'all')">All</button>
+        <button class="reg-filter-btn" data-filter="caught" onclick="setRegFilter(this,'caught')">Caught</button>
+        <button class="reg-filter-btn" data-filter="available" onclick="setRegFilter(this,'available')">Available</button>
+        <button class="reg-filter-btn" data-filter="alive" onclick="setRegFilter(this,'alive')">Alive</button>
+        <button class="reg-filter-btn" data-filter="dead" onclick="setRegFilter(this,'dead')">Fallen</button>
+        <button class="reg-filter-btn" data-filter="champion" onclick="setRegFilter(this,'champion')">Champions</button>
+        <button class="reg-filter-btn" data-filter="never" onclick="setRegFilter(this,'never')">Never Caught</button>
       </div>
       <div id="reg-stats" style="font-size:11px;color:var(--muted);margin-bottom:12px;"></div>
     </div>
@@ -993,7 +1007,6 @@ const GAMES=[
   {id:'shield',n:'Pokémon Shield',g:'Generation VIII — Galar',v:null},
   {id:'brilliant-diamond',n:'Brilliant Diamond',g:'Generation VIII — Sinnoh Remake',v:null},
   {id:'shining-pearl',n:'Shining Pearl',g:'Generation VIII — Sinnoh Remake',v:null},
-  {id:'legends-arceus',n:'Legends: Arceus',g:'Generation VIII — Hisui',v:null},
   {id:'scarlet',n:'Pokémon Scarlet',g:'Generation IX — Paldea',v:null},
   {id:'violet',n:'Pokémon Violet',g:'Generation IX — Paldea',v:null},
 ];
@@ -1029,6 +1042,10 @@ const STARTER_GAMES={
   platinum:[{name:'turtwig',id:387},{name:'chimchar',id:390},{name:'piplup',id:393}],
   heartgold:[{name:'chikorita',id:152},{name:'cyndaquil',id:155},{name:'totodile',id:158}],
   soulsilver:[{name:'chikorita',id:152},{name:'cyndaquil',id:155},{name:'totodile',id:158}],
+  black:[{name:'snivy',id:495},{name:'tepig',id:498},{name:'oshawott',id:501}],
+  white:[{name:'snivy',id:495},{name:'tepig',id:498},{name:'oshawott',id:501}],
+  'black-2':[{name:'snivy',id:495},{name:'tepig',id:498},{name:'oshawott',id:501}],
+  'white-2':[{name:'snivy',id:495},{name:'tepig',id:498},{name:'oshawott',id:501}],
 };
 
 // Get the player's chosen starter for this run (null if not yet set)
@@ -1038,7 +1055,7 @@ function setStarterChoice(gameId, name){
   state.games[gameId].starter=name; save();
   renderRunLayout(gameId);
 }
-const ML={'walk':'Walking','old-rod':'Old Rod','good-rod':'Good Rod','super-rod':'Super Rod','surf':'Surfing','rock-smash':'Rock Smash','headbutt':'Headbutt','secret-tree':'Secret Tree','fossil':'Fossil','dive':'Dive','gift':'Gift','only-one':'One-time','honey-tree':'Honey Tree'};
+const ML={'walk':'Walking','old-rod':'Old Rod','good-rod':'Good Rod','super-rod':'Super Rod','surf':'Surfing','rock-smash':'Rock Smash','headbutt':'Headbutt','secret-tree':'Secret Tree','shaking-area':'Shaking','shaking-grass':'Shaking Grass','shaking-cave':'Shaking Cave','shaking-surf':'Shaking Surf','shaking-rod':'Shaking Rod','shaking-bridge':'Bridge Shadow','dark-grass':'Dark Grass','fossil':'Fossil','hidden-hollow':'Hidden Hollow','dive':'Dive','gift':'Gift','only-one':'One-time','honey-tree':'Honey Tree'};
 
 // ══════════════════════════════════════════════
 // TXT-BASED GAME DATA
@@ -1114,8 +1131,16 @@ function parseTxt(txt){
           }
           const [,rateStr,...rest] = parts2;
           const rate = parseInt(rateStr)||0;
-          const pokemon = rest.join(':').split(',').map(normPokeName).filter(Boolean);
-          return {method, rate, pokemon};
+          const rawPoke = rest.join(':').split(',');
+          const pokemon = []; const pokeSeasons = {};
+          rawPoke.forEach(rp => {
+            const sm = rp.match(/^([^[]+)\[([A-Za-z,]+)\]$/);
+            const pname = normPokeName(sm ? sm[1] : rp);
+            if (!pname) return;
+            pokemon.push(pname);
+            if (sm) pokeSeasons[pname] = sm[2].match(/Sp|Su|Au|Wi/g) || [];
+          });
+          return {method, rate, pokemon, pokeSeasons};
         }).filter(g=>g&&g.pokemon.length>0);
         // Multi-floor or single floor
         const hasFloors = floors.length>1 || floors[0].name!==null;
@@ -1174,7 +1199,7 @@ Route 6|walk:40:pidgey|walk:35:oddish|walk:25:mankey|old-rod:100:magikarp|good-r
 Vermilion City|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|super-rod:50:krabby|super-rod:50:shellder|trade:spearow:farfetchd
 --S.S. Anne|r4|rival|Blue
 --Vermilion City Gym|3|gym-leader|Lt. Surge
-Diglett's Cave|cave:95:diglett|cave:5:dugtrio
+Digletts Cave|cave:95:diglett|cave:5:dugtrio
 Route 11|walk:40:ekans|walk:35:spearow|walk:25:drowzee|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|trade:nidorino:nidorina
 Route 9|walk:40:rattata|walk:35:spearow|walk:25:ekans
 Route 10|walk:40:voltorb|walk:35:spearow|walk:25:ekans|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|super-rod:50:poliwhirl|super-rod:50:slowpoke
@@ -1243,7 +1268,7 @@ Route 6|walk:40:pidgey|walk:35:bellsprout|walk:25:meowth|old-rod:100:magikarp|go
 Vermilion City|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|super-rod:50:krabby|super-rod:50:shellder|trade:spearow:farfetchd
 --S.S. Anne|r4|rival|Blue
 --Vermilion City Gym|3|gym-leader|Lt. Surge
-Diglett's Cave|cave:95:diglett|cave:5:dugtrio
+Digletts Cave|cave:95:diglett|cave:5:dugtrio
 Route 11|walk:40:sandshrew|walk:35:spearow|walk:25:drowzee|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|trade:nidorino:nidorina
 Route 9|walk:40:rattata|walk:35:spearow|walk:25:sandshrew
 Route 10|walk:40:voltorb|walk:35:spearow|walk:25:sandshrew|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|super-rod:50:poliwhirl|super-rod:50:slowpoke
@@ -1312,7 +1337,7 @@ Vermilion City|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|supe
 --S.S. Anne|r4|rival|Blue
 --S.S. Anne|jj2|evil-team|Jessie & James
 --Vermilion City Gym|3|gym-leader|Lt. Surge
-Diglett's Cave|cave:95:diglett|cave:5:dugtrio
+Digletts Cave|cave:95:diglett|cave:5:dugtrio
 Route 11|walk:35:pidgey|walk:30:rattata|walk:24:drowzee|walk:10:pidgeotto|walk:1:raticate|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|trade:lickitung:dugtrio
 Route 9|walk:30:nidoran-m|walk:30:nidoran-f|walk:15:rattata|walk:10:spearow|walk:5:nidorino|walk:5:nidorina|walk:4:raticate|walk:1:fearow
 Route 10|walk:50:magnemite|walk:20:rattata|walk:10:nidoran-m|walk:10:nidoran-f|walk:5:machop|walk:5:raticate|old-rod:100:magikarp|good-rod:50:goldeen|good-rod:50:poliwag|super-rod:70:krabby|super-rod:20:horsea|super-rod:11:kingler
@@ -1543,6 +1568,9 @@ const STARTER_WEAKNESS={
   turtwig:'fire',
   chimchar:'water',
   piplup:'grass',
+  snivy:'fire',
+  tepig:'water',
+  oshawott:'grass',
 };
 
 // Yellow: eeveelution Blue uses depends on early battle results, not starter
@@ -3516,6 +3544,903 @@ venusaur|84|sludge-bomb,giga-drain,sleep-powder,frenzy-plant|overgrow
 charizard|84|flare-blitz,air-slash,blast-burn,dragon-pulse|blaze
 blastoise|84|focus-blast,hydro-cannon,blizzard,flash-cannon|torrent
 `);
+  registerBattleData('black', `--n1|N||/leaders/blwh-n-2
+purrloin|7|scratch,growl|unburden
+
+--n2|N||/leaders/blwh-n-2
+pidove|13|gust,quick-attack,leer,growl|super-luck
+timburr|13|low-kick,focus-energy,bide,leer|guts
+tympole|13|bubble-beam,supersonic,growl,round|swift-swim
+
+--n3|N||/leaders/blwh-n-2
+sandile|22|assurance,embargo,sand-tomb,mud-slap|moxie
+scraggy|22|swagger,headbutt,brick-break,feint-attack|shed-skin
+darumaka|22|fire-punch,headbutt,facade,uproar|hustle
+sigilyph|22|whirlwind,psybeam,tailwind,air-cutter|magic-guard
+
+--n4|N||/leaders/blwh-n-2
+boldore|28|mud-slap,iron-defense,smack-down,power-gem|sturdy
+ferroseed|28|pin-missile,metal-claw,gyro-ball,iron-defense|iron-barbs
+joltik|28|electroweb,bug-bite,gastro-acid,slash|unnerve
+klink|28|gear-grind,bind,thunder-shock,charge-beam|plus
+
+--n5a|N||/leaders/blwh-n-2#N - Black
+zekrom|52|fusion-bolt,zen-headbutt,giga-impact,light-screen|teravolt||
+klinklang|50|flash-cannon,metal-sound,hyper-beam,thunderbolt|plus||
+zoroark|50|flamethrower,focus-blast,night-slash,retaliate|illusion||
+carracosta|50|stone-edge,aqua-jet,crunch,waterfall|sturdy||
+archeops|50|stone-edge,acrobatics,dragon-claw,crunch|defeatist||
+vanilluxe|50|blizzard,hail,flash-cannon,frost-breath|ice-body||
+
+--n5b|N||/leaders/blwh-n-2#N - White
+reshiram|52|hyper-beam,fusion-flare,extrasensory,reflect|turboblaze||
+klinklang|50|flash-cannon,metal-sound,hyper-beam,thunderbolt|plus||
+zoroark|50|flamethrower,focus-blast,night-slash,retaliate|illusion||
+carracosta|50|stone-edge,aqua-jet,crunch,waterfall|sturdy||
+archeops|50|stone-edge,acrobatics,dragon-claw,crunch|defeatist||
+vanilluxe|50|blizzard,hail,flash-cannon,frost-breath|ice-body||
+
+--gh|Ghetsis||/leaders/blwh-ghetsis#Ghetsis
+cofagrigus|52|toxic,shadow-ball,protect,psychic|mummy||
+bouffalant|52|head-charge,wild-charge,earthquake,poison-jab|reckless||
+seismitoad|52|muddy-water,rain-dance,earthquake,sludge-wave|swift-swim||
+bisharp|52|night-slash,stone-edge,x-scissor,metal-burst|defiant||
+eelektross|52|crunch,flamethrower,acrobatics,wild-charge|levitate||
+hydreigon|54|dragon-pulse,fire-blast,surf,focus-blast|levitate||
+
+--morimoto|Morimoto
+liepard|75|fake-out,grass-knot,night-slash,sucker-punch|limber
+simisear|75|flamethrower,acrobatics,crunch,payback|gluttony|petaya-berry
+simipour|75|surf,acrobatics,crunch,payback|gluttony|petaya-berry
+simisage|75|energy-ball,acrobatics,crunch,payback|gluttony|petaya-berry
+swoobat|75|air-slash,endeavor,psychic,psyshock|unaware
+zebstrika|77|pursuit,giga-impact,flame-charge,wild-charge|lightning-rod
+
+--b1|Bianca||/leaders/blwh-bianca
+oshawott|5|tackle,tail-whip|torrent||fire
+snivy|5|tackle,leer|overgrow||water
+tepig|5|tackle,tail-whip|blaze||grass
+
+--b2|Bianca||/leaders/blwh-bianca
+lillipup|6|leer,tackle,odor-sleuth|vital-spirit
+oshawott|7|tackle,tail-whip,water-gun|torrent||fire
+snivy|7|tackle,leer,vine-whip|overgrow||water
+tepig|7|tackle,tail-whip,ember|blaze||grass
+
+--b3|Bianca||/leaders/blwh-bianca
+herdier|18|bite,odor-sleuth,take-down,helping-hand|intimidate
+pansear|18|lick,incinerate,fury-swipes,yawn|gluttony||fire
+panpour|18|lick,water-gun,water-sport,fury-swipes|gluttony||water
+pansage|18|lick,vine-whip,leech-seed,fury-swipes|gluttony||grass
+dewott|20|water-sport,razor-shell,focus-energy,fury-cutter|torrent||fire
+servine|20|wrap,growth,leaf-tornado,leech-seed|overgrow||water
+pignite|20|defense-curl,flame-charge,arm-thrust,smog|blaze||grass
+munna|18|yawn,moonlight,psybeam,imprison|forewarn
+
+--b4|Bianca||/leaders/blwh-bianca
+herdier|26|crunch,odor-sleuth,take-down,work-up|intimidate
+pansear|26|amnesia,flame-burst,bite,yawn|gluttony||fire
+panpour|26|bite,taunt,scald,water-sport|gluttony||water
+pansage|26|bite,torment,leech-seed,seed-bomb|gluttony||grass
+dewott|28|water-pulse,razor-shell,revenge,fury-cutter|torrent||fire
+servine|28|slam,mega-drain,leaf-tornado,leech-seed|overgrow||water
+pignite|28|arm-thrust,smog,rollout,take-down|blaze||grass
+munna|26|defense-curl,lucky-chant,psybeam,hypnosis|forewarn
+
+--b5|Bianca||/leaders/blwh-bianca
+stoutland|38|crunch,roar,retaliate,work-up|intimidate
+simisear|38|leer,fury-swipes,lick,flame-burst|gluttony||fire
+simipour|38|leer,fury-swipes,lick,scald|gluttony||water
+simisage|38|leer,fury-swipes,lick,seed-bomb|gluttony||grass
+samurott|40|aqua-jet,revenge,slash,encore|torrent||fire
+serperior|40|slam,coil,mega-drain,leaf-blade|overgrow||water
+emboar|40|heat-crash,assurance,rollout,take-down|blaze||grass
+musharna|38|defense-curl,lucky-chant,psybeam,hypnosis|forewarn
+
+--c1|Cheren||/leaders/blwh-cheren
+oshawott|5|tackle,tail-whip|torrent||water
+snivy|5|tackle,leer|overgrow||grass
+tepig|5|tackle,tail-whip|blaze||fire
+
+--c2|Cheren||/leaders/blwh-cheren
+oshawott|7|tackle,tail-whip,water-gun|torrent|oran-berry|water
+snivy|7|tackle,leer,vine-whip|overgrow|oran-berry|grass
+tepig|7|tackle,tail-whip,ember|blaze|oran-berry|fire
+purrloin|8|scratch,growl,assist|limber
+
+--c3|Cheren||/leaders/blwh-cheren
+oshawott|14|tackle,tail-whip,water-gun,water-sport|torrent|oran-berry|water
+snivy|14|tackle,leer,vine-whip,wrap|overgrow|oran-berry|grass
+tepig|14|tackle,tail-whip,ember,defense-curl|blaze|oran-berry|fire
+purrloin|12|fury-swipes,growl,assist,sand-attack|limber
+
+--c4|Cheren||/leaders/blwh-cheren
+pidove|20|quick-attack,leer,air-cutter,roost|super-luck
+pansage|20|bite,fury-swipes,vine-whip,leech-seed|gluttony||grass
+pansear|20|bite,incinerate,yawn,fury-swipes|gluttony||fire
+panpour|20|bite,fury-swipes,water-gun,water-sport|gluttony||water
+dewott|22|fury-cutter,focus-energy,razor-shell,water-sport|torrent|sitrus-berry|fire
+servine|22|leaf-tornado,leech-seed,growth,wrap|overgrow|sitrus-berry|water
+pignite|22|flame-charge,defense-curl,arm-thrust,smog|blaze|sitrus-berry|grass
+liepard|20|pursuit,torment,sand-attack,fury-swipes|unburden
+
+--c5|Cheren||/leaders/blwh-cheren
+liepard|24|pursuit,torment,fake-out,fury-swipes|unburden
+pansage|24|bite,fury-swipes,seed-bomb,leech-seed|gluttony|miracle-seed|grass
+pansear|24|bite,flame-burst,yawn,fury-swipes|gluttony|charcoal|fire
+panpour|24|bite,fury-swipes,scald,water-sport|gluttony|mystic-water|water
+dewott|26|fury-cutter,focus-energy,razor-shell,water-pulse|torrent|sitrus-berry|fire
+servine|26|leaf-tornado,leech-seed,mega-drain,growth|overgrow|sitrus-berry|water
+pignite|26|flame-charge,rollout,arm-thrust,smog|blaze|sitrus-berry|grass
+tranquill|24|quick-attack,detect,air-cutter,roost|super-luck
+
+--c55|Cheren||/leaders/blwh-cheren
+unfezant|33|roost,detect,air-slash,taunt|super-luck|scope-lens
+liepard|33|torment,fake-out,hone-claws,assurance|unburden|sitrus-berry
+simisage|33|leer,lick,fury-swipes,seed-bomb|gluttony|miracle-seed|grass
+simisear|33|leer,lick,fury-swipes,flame-burst|gluttony|charcoal|fire
+simipour|33|leer,lick,fury-swipes,scald|gluttony|mystic-water|water
+dewott|35|fury-cutter,water-pulse,revenge,aqua-jet|torrent|leftovers|fire
+servine|35|leech-seed,mega-drain,slam,leaf-blade|overgrow|leftovers|water
+pignite|35|smog,rollout,take-down,heat-crash|blaze|leftovers|grass
+
+--c6|Cheren||/leaders/blwh-cheren
+unfezant|43|razor-wind,detect,air-slash,taunt|super-luck|scope-lens
+simisage|43|leer,fury-swipes,lick,seed-bomb|gluttony|miracle-seed|grass
+simisear|43|leer,fury-swipes,lick,flame-burst|gluttony|charcoal|fire
+simipour|43|leer,fury-swipes,lick,scald|gluttony|mystic-water|water
+liepard|43|assurance,night-slash,taunt,slash|unburden|sitrus-berry
+samurott|45|aqua-tail,aqua-jet,slash,encore|torrent|leftovers|fire
+serperior|45|giga-drain,leaf-blade,coil,slash|overgrow|leftovers|water
+emboar|45|flame-charge,rollout,arm-thrust,smog|blaze|leftovers|grass
+
+--c7|Cheren||/leaders/blwh-cheren
+liepard|65|fake-out,aerial-ace,shadow-claw,night-slash|unburden|sitrus-berry
+simisage|65|energy-ball,rock-slide,brick-break,payback|gluttony|miracle-seed|grass
+simisear|65|flamethrower,rock-slide,brick-break,payback|gluttony|charcoal|fire
+simipour|65|surf,rock-slide,brick-break,payback|gluttony|mystic-water|water
+unfezant|65|u-turn,air-slash,quick-attack,facade|super-luck|scope-lens
+gigalith|65|giga-impact,earthquake,stone-edge,stealth-rock|sturdy|leftovers
+haxorus|65|outrage,x-scissor,rock-slide,surf|rivalry|dragon-gem
+samurott|67|hydro-pump,aqua-jet,blizzard,x-scissor|torrent|focus-sash|fire
+serperior|67|leaf-storm,leaf-blade,coil,dragon-tail|overgrow|focus-sash|water
+emboar|67|flame-charge,rollout,arm-thrust,smog|blaze|focus-sash|grass
+
+--1|Chili, Cress or Cilan||/leaders/blwh-ccc
+lillipup|12|bite,work-up|pickup||
+pansear|14|incinerate,work-up|gluttony||fire
+panpour|14|water-gun,work-up|gluttony||water
+pansage|14|vine-whip,work-up|gluttony||grass
+
+--2|Lenora|normal|/leaders/blwh-lenora#Black and White
+herdier|18|take-down,bite,retaliate,leer|intimidate||
+watchog|20|leer,crunch,retaliate,hypnosis|illuminate||
+
+--3|Burgh|bug|/leaders/blwh-burgh#Black and White
+whirlipede|21|poison-tail,struggle-bug,screech,pursuit|swarm||
+dwebble|21|smack-down,struggle-bug,sand-attack,feint-attack|shell-armor||
+leavanny|23|razor-leaf,protect,string-shot,struggle-bug|swarm||
+
+--4|Elesa|electric|/leaders/blwh-elesa#Black and White
+emolga|25|volt-switch,aerial-ace,pursuit,quick-attack|static||
+emolga|25|volt-switch,aerial-ace,pursuit,quick-attack|static||
+zebstrika|27|flame-charge,spark,volt-switch,quick-attack|lightning-rod||
+
+--5|Clay|ground|/leaders/blwh-clay#Black and White
+krokorok|29|swagger,crunch,bulldoze,torment|moxie||
+palpitoad|29|aqua-ring,bulldoze,muddy-water,bubble-beam|swift-swim||
+excadrill|31|hone-claws,slash,rock-slide,bulldoze|sand-rush||
+
+--6|Skyla|flying|/leaders/blwh-skyla#Black and White
+swoobat|33|amnesia,heart-stamp,acrobatics,assurance|unaware||
+unfezant|33|quick-attack,razor-wind,air-slash,leer|big-pecks||
+swanna|35|aqua-ring,aerial-ace,air-slash,bubble-beam|keen-eye||
+
+--7|Brycen|ice|/leaders/blwh-brycen#Black and White
+vanillish|37|frost-breath,acid-armor,astonish,mirror-shot|ice-body||
+beartic|39|swagger,icicle-crash,slash,brine|snow-cloak||
+cryogonal|37|aurora-beam,reflect,frost-breath,rapid-spin|levitate||
+
+--8a|Drayden|dragon|/leaders/blwh-drayden#Black
+fraxure|41|dragon-tail,dragon-dance,assurance,dragon-rage|rivalry||
+druddigon|41|night-slash,revenge,dragon-tail,chip-away|rough-skin||
+haxorus|43|dragon-tail,dragon-dance,slash,assurance|mold-breaker||
+
+--8b|Iris|dragon|/leaders/blwh-iris#White
+fraxure|41|dragon-tail,dragon-dance,assurance,dragon-rage|rivalry||
+druddigon|41|night-slash,revenge,dragon-tail,chip-away|rough-skin||
+haxorus|43|dragon-tail,dragon-dance,slash,assurance|mold-breaker||
+
+--e1|Shauntal|ghost|/leaders/blwh-shauntal#Shauntal
+cofagrigus|48|psychic,will-o-wisp,shadow-ball,grass-knot|mummy||
+jellicent|48|shadow-ball,surf,energy-ball,brine|cursed-body||
+golurk|48|curse,brick-break,earthquake,shadow-punch|iron-fist||
+chandelure|50|fire-blast,psychic,shadow-ball,payback|flame-body||
+
+--e2|Grimsley|dark|/leaders/blwh-grimsley#Grimsley
+scrafty|48|sand-attack,crunch,poison-jab,brick-break|moxie||
+krookodile|48|crunch,dragon-claw,foul-play,earthquake|intimidate||
+liepard|48|fake-out,attract,aerial-ace,night-slash|limber||
+bisharp|50|x-scissor,night-slash,metal-claw,aerial-ace|defiant||
+
+--e3|Caitlin|psychic|/leaders/blwh-caitlin#Caitlin
+reuniclus|48|energy-ball,thunder,focus-blast,psychic|magic-guard||
+sigilyph|48|air-slash,shadow-ball,ice-beam,psychic|wonder-skin||
+musharna|48|shadow-ball,psychic,charge-beam,reflect|synchronize||
+gothitelle|50|calm-mind,thunderbolt,psychic,shadow-ball|frisk||
+
+--e4|Marshal|fighting|/leaders/blwh-marshal#Marshal
+throh|48|stone-edge,payback,bulldoze,storm-throw|guts||
+sawk|48|stone-edge,karate-chop,grass-knot,retaliate|sturdy||
+conkeldurr|48|stone-edge,hammer-arm,retaliate,grass-knot|sheer-force||
+mienshao|50|u-turn,jump-kick,rock-slide,retaliate|inner-focus||
+
+--e5|Shauntal|ghost|/leaders/blwh-shauntal#Shauntal
+cofagrigus|71|psychic,will-o-wisp,shadow-ball,energy-ball|mummy||
+jellicent|71|sludge-wave,shadow-ball,hydro-pump,psychic|cursed-body||
+golurk|71|hammer-arm,earthquake,shadow-punch,curse|iron-fist||
+froslass|71|blizzard,ice-shard,shadow-ball,psychic|snow-cloak
+drifblim|71|thunder,shadow-ball,acrobatics,psychic|aftermath
+chandelure|73|fire-blast,psychic,shadow-ball,payback|flame-body||
+
+--e6|Grimsley|dark|/leaders/blwh-grimsley#Grimsley
+sharpedo|71|waterfall,night-slash,earthquake,aqua-jet|rough-skin
+scrafty|71|crunch,poison-jab,head-smash,brick-break|moxie||
+krookodile|71|outrage,earthquake,foul-play,smack-down|intimidate||
+liepard|71|sucker-punch,fake-out,attract,aerial-ace|limber||
+drapion|71|poison-fang,fire-fang,thunder-fang,crunch|battle-armor
+bisharp|73|x-scissor,night-slash,guillotine,aerial-ace|defiant||
+
+--e7|Caitlin|psychic|/leaders/blwh-caitlin#Caitlin
+musharna|71|psychic,reflect,hypnosis,dream-eater|synchronize||
+sigilyph|71|air-slash,flash-cannon,ice-beam,psychic|wonder-skin||
+reuniclus|71|energy-ball,thunder,focus-blast,psychic|magic-guard||
+gothitelle|71|flatter,payback,thunderbolt,psychic|frisk||
+bronzong|71|payback,charge-beam,flash-cannon,psychic|levitate
+metagross|73|bullet-punch,earthquake,zen-headbutt,giga-impact|clear-body
+
+--e8|Marshal|fighting|/leaders/blwh-marshal#Marshal
+breloom|71|spore,grass-knot,sky-uppercut,mach-punch|effect-spore
+throh|71|earthquake,superpower,retaliate,grass-knot|guts||
+sawk|71|close-combat,stone-edge,poison-jab,retaliate|sturdy||
+toxicroak|71|earthquake,low-sweep,toxic,venoshock|anticipation
+mienshao|71|u-turn,high-jump-kick,fake-out,acrobatics|inner-focus||
+conkeldurr|73|stone-edge,hammer-arm,payback,earthquake|sheer-force||
+
+--c|Alder||/leaders/blwh-alder
+accelgor|75|bug-buzz,focus-blast,me-first,energy-ball|hydration
+bouffalant|75|head-charge,megahorn,stone-edge,earthquake|sap-sipper
+druddigon|75|night-slash,payback,outrage,superpower|rough-skin
+vanilluxe|75|blizzard,light-screen,flash-cannon,acid-armor|ice-body
+escavalier|75|x-scissor,giga-impact,iron-head,aerial-ace|swarm
+volcarona|77|overheat,hyper-beam,bug-buzz,quiver-dance|flame-body
+
+--cc|Cynthia||/leaders/dp-cynthia
+spiritomb|75|sucker-punch,shadow-ball,will-o-wisp,double-team|pressure
+eelektross|75|crunch,wild-charge,dragon-claw,flamethrower|levitate
+milotic|75|hydro-pump,dragon-tail,blizzard,bulldoze|marvel-scale
+braviary|75|brave-bird,shadow-claw,crush-claw,retaliate|sheer-force
+lucario|75|extreme-speed,dragon-pulse,close-combat,aura-sphere|steadfast
+garchomp|77|dragon-rush,crunch,earthquake,stone-edge|sand-veil`);
+  registerBattleData('white', `--n1|N||/leaders/blwh-n-2
+purrloin|7|scratch,growl|unburden
+
+--n2|N||/leaders/blwh-n-2
+pidove|13|gust,quick-attack,leer,growl|super-luck
+timburr|13|low-kick,focus-energy,bide,leer|guts
+tympole|13|bubble-beam,supersonic,growl,round|swift-swim
+
+--n3|N||/leaders/blwh-n-2
+sandile|22|assurance,embargo,sand-tomb,mud-slap|moxie
+scraggy|22|swagger,headbutt,brick-break,feint-attack|shed-skin
+darumaka|22|fire-punch,headbutt,facade,uproar|hustle
+sigilyph|22|whirlwind,psybeam,tailwind,air-cutter|magic-guard
+
+--n4|N||/leaders/blwh-n-2
+boldore|28|mud-slap,iron-defense,smack-down,power-gem|sturdy
+ferroseed|28|pin-missile,metal-claw,gyro-ball,iron-defense|iron-barbs
+joltik|28|electroweb,bug-bite,gastro-acid,slash|unnerve
+klink|28|gear-grind,bind,thunder-shock,charge-beam|plus
+
+--n5a|N||/leaders/blwh-n-2#N - Black
+zekrom|52|fusion-bolt,zen-headbutt,giga-impact,light-screen|teravolt||
+klinklang|50|flash-cannon,metal-sound,hyper-beam,thunderbolt|plus||
+zoroark|50|flamethrower,focus-blast,night-slash,retaliate|illusion||
+carracosta|50|stone-edge,aqua-jet,crunch,waterfall|sturdy||
+archeops|50|stone-edge,acrobatics,dragon-claw,crunch|defeatist||
+vanilluxe|50|blizzard,hail,flash-cannon,frost-breath|ice-body||
+
+--n5b|N||/leaders/blwh-n-2#N - White
+reshiram|52|hyper-beam,fusion-flare,extrasensory,reflect|turboblaze||
+klinklang|50|flash-cannon,metal-sound,hyper-beam,thunderbolt|plus||
+zoroark|50|flamethrower,focus-blast,night-slash,retaliate|illusion||
+carracosta|50|stone-edge,aqua-jet,crunch,waterfall|sturdy||
+archeops|50|stone-edge,acrobatics,dragon-claw,crunch|defeatist||
+vanilluxe|50|blizzard,hail,flash-cannon,frost-breath|ice-body||
+
+--gh|Ghetsis||/leaders/blwh-ghetsis#Ghetsis
+cofagrigus|52|toxic,shadow-ball,protect,psychic|mummy||
+bouffalant|52|head-charge,wild-charge,earthquake,poison-jab|reckless||
+seismitoad|52|muddy-water,rain-dance,earthquake,sludge-wave|swift-swim||
+bisharp|52|night-slash,stone-edge,x-scissor,metal-burst|defiant||
+eelektross|52|crunch,flamethrower,acrobatics,wild-charge|levitate||
+hydreigon|54|dragon-pulse,fire-blast,surf,focus-blast|levitate||
+
+--morimoto|Morimoto
+liepard|75|fake-out,grass-knot,night-slash,sucker-punch|limber
+simisear|75|flamethrower,acrobatics,crunch,payback|gluttony|petaya-berry
+simipour|75|surf,acrobatics,crunch,payback|gluttony|petaya-berry
+simisage|75|energy-ball,acrobatics,crunch,payback|gluttony|petaya-berry
+swoobat|75|air-slash,endeavor,psychic,psyshock|unaware
+zebstrika|77|pursuit,giga-impact,flame-charge,wild-charge|lightning-rod
+
+--b1|Bianca||/leaders/blwh-bianca
+oshawott|5|tackle,tail-whip|torrent||fire
+snivy|5|tackle,leer|overgrow||water
+tepig|5|tackle,tail-whip|blaze||grass
+
+--b2|Bianca||/leaders/blwh-bianca
+lillipup|6|leer,tackle,odor-sleuth|vital-spirit
+oshawott|7|tackle,tail-whip,water-gun|torrent||fire
+snivy|7|tackle,leer,vine-whip|overgrow||water
+tepig|7|tackle,tail-whip,ember|blaze||grass
+
+--b3|Bianca||/leaders/blwh-bianca
+herdier|18|bite,odor-sleuth,take-down,helping-hand|intimidate
+pansear|18|lick,incinerate,fury-swipes,yawn|gluttony||fire
+panpour|18|lick,water-gun,water-sport,fury-swipes|gluttony||water
+pansage|18|lick,vine-whip,leech-seed,fury-swipes|gluttony||grass
+dewott|20|water-sport,razor-shell,focus-energy,fury-cutter|torrent||fire
+servine|20|wrap,growth,leaf-tornado,leech-seed|overgrow||water
+pignite|20|defense-curl,flame-charge,arm-thrust,smog|blaze||grass
+munna|18|yawn,moonlight,psybeam,imprison|forewarn
+
+--b4|Bianca||/leaders/blwh-bianca
+herdier|26|crunch,odor-sleuth,take-down,work-up|intimidate
+pansear|26|amnesia,flame-burst,bite,yawn|gluttony||fire
+panpour|26|bite,taunt,scald,water-sport|gluttony||water
+pansage|26|bite,torment,leech-seed,seed-bomb|gluttony||grass
+dewott|28|water-pulse,razor-shell,revenge,fury-cutter|torrent||fire
+servine|28|slam,mega-drain,leaf-tornado,leech-seed|overgrow||water
+pignite|28|arm-thrust,smog,rollout,take-down|blaze||grass
+munna|26|defense-curl,lucky-chant,psybeam,hypnosis|forewarn
+
+--b5|Bianca||/leaders/blwh-bianca
+stoutland|38|crunch,roar,retaliate,work-up|intimidate
+simisear|38|leer,fury-swipes,lick,flame-burst|gluttony||fire
+simipour|38|leer,fury-swipes,lick,scald|gluttony||water
+simisage|38|leer,fury-swipes,lick,seed-bomb|gluttony||grass
+samurott|40|aqua-jet,revenge,slash,encore|torrent||fire
+serperior|40|slam,coil,mega-drain,leaf-blade|overgrow||water
+emboar|40|heat-crash,assurance,rollout,take-down|blaze||grass
+musharna|38|defense-curl,lucky-chant,psybeam,hypnosis|forewarn
+
+--c1|Cheren||/leaders/blwh-cheren
+oshawott|5|tackle,tail-whip|torrent||water
+snivy|5|tackle,leer|overgrow||grass
+tepig|5|tackle,tail-whip|blaze||fire
+
+--c2|Cheren||/leaders/blwh-cheren
+oshawott|7|tackle,tail-whip,water-gun|torrent|oran-berry|water
+snivy|7|tackle,leer,vine-whip|overgrow|oran-berry|grass
+tepig|7|tackle,tail-whip,ember|blaze|oran-berry|fire
+purrloin|8|scratch,growl,assist|limber
+
+--c3|Cheren||/leaders/blwh-cheren
+oshawott|14|tackle,tail-whip,water-gun,water-sport|torrent|oran-berry|water
+snivy|14|tackle,leer,vine-whip,wrap|overgrow|oran-berry|grass
+tepig|14|tackle,tail-whip,ember,defense-curl|blaze|oran-berry|fire
+purrloin|12|fury-swipes,growl,assist,sand-attack|limber
+
+--c4|Cheren||/leaders/blwh-cheren
+pidove|20|quick-attack,leer,air-cutter,roost|super-luck
+pansage|20|bite,fury-swipes,vine-whip,leech-seed|gluttony||grass
+pansear|20|bite,incinerate,yawn,fury-swipes|gluttony||fire
+panpour|20|bite,fury-swipes,water-gun,water-sport|gluttony||water
+dewott|22|fury-cutter,focus-energy,razor-shell,water-sport|torrent|sitrus-berry|fire
+servine|22|leaf-tornado,leech-seed,growth,wrap|overgrow|sitrus-berry|water
+pignite|22|flame-charge,defense-curl,arm-thrust,smog|blaze|sitrus-berry|grass
+liepard|20|pursuit,torment,sand-attack,fury-swipes|unburden
+
+--c5|Cheren||/leaders/blwh-cheren
+liepard|24|pursuit,torment,fake-out,fury-swipes|unburden
+pansage|24|bite,fury-swipes,seed-bomb,leech-seed|gluttony|miracle-seed|grass
+pansear|24|bite,flame-burst,yawn,fury-swipes|gluttony|charcoal|fire
+panpour|24|bite,fury-swipes,scald,water-sport|gluttony|mystic-water|water
+dewott|26|fury-cutter,focus-energy,razor-shell,water-pulse|torrent|sitrus-berry|fire
+servine|26|leaf-tornado,leech-seed,mega-drain,growth|overgrow|sitrus-berry|water
+pignite|26|flame-charge,rollout,arm-thrust,smog|blaze|sitrus-berry|grass
+tranquill|24|quick-attack,detect,air-cutter,roost|super-luck
+
+--c55|Cheren||/leaders/blwh-cheren
+unfezant|33|roost,detect,air-slash,taunt|super-luck|scope-lens
+liepard|33|torment,fake-out,hone-claws,assurance|unburden|sitrus-berry
+simisage|33|leer,lick,fury-swipes,seed-bomb|gluttony|miracle-seed|grass
+simisear|33|leer,lick,fury-swipes,flame-burst|gluttony|charcoal|fire
+simipour|33|leer,lick,fury-swipes,scald|gluttony|mystic-water|water
+dewott|35|fury-cutter,water-pulse,revenge,aqua-jet|torrent|leftovers|fire
+servine|35|leech-seed,mega-drain,slam,leaf-blade|overgrow|leftovers|water
+pignite|35|smog,rollout,take-down,heat-crash|blaze|leftovers|grass
+
+--c6|Cheren||/leaders/blwh-cheren
+unfezant|43|razor-wind,detect,air-slash,taunt|super-luck|scope-lens
+simisage|43|leer,fury-swipes,lick,seed-bomb|gluttony|miracle-seed|grass
+simisear|43|leer,fury-swipes,lick,flame-burst|gluttony|charcoal|fire
+simipour|43|leer,fury-swipes,lick,scald|gluttony|mystic-water|water
+liepard|43|assurance,night-slash,taunt,slash|unburden|sitrus-berry
+samurott|45|aqua-tail,aqua-jet,slash,encore|torrent|leftovers|fire
+serperior|45|giga-drain,leaf-blade,coil,slash|overgrow|leftovers|water
+emboar|45|flame-charge,rollout,arm-thrust,smog|blaze|leftovers|grass
+
+--c7|Cheren||/leaders/blwh-cheren
+liepard|65|fake-out,aerial-ace,shadow-claw,night-slash|unburden|sitrus-berry
+simisage|65|energy-ball,rock-slide,brick-break,payback|gluttony|miracle-seed|grass
+simisear|65|flamethrower,rock-slide,brick-break,payback|gluttony|charcoal|fire
+simipour|65|surf,rock-slide,brick-break,payback|gluttony|mystic-water|water
+unfezant|65|u-turn,air-slash,quick-attack,facade|super-luck|scope-lens
+gigalith|65|giga-impact,earthquake,stone-edge,stealth-rock|sturdy|leftovers
+haxorus|65|outrage,x-scissor,rock-slide,surf|rivalry|dragon-gem
+samurott|67|hydro-pump,aqua-jet,blizzard,x-scissor|torrent|focus-sash|fire
+serperior|67|leaf-storm,leaf-blade,coil,dragon-tail|overgrow|focus-sash|water
+emboar|67|flame-charge,rollout,arm-thrust,smog|blaze|focus-sash|grass
+
+--1|Chili, Cress or Cilan||/leaders/blwh-ccc
+lillipup|12|bite,work-up|pickup||
+pansear|14|incinerate,work-up|gluttony||fire
+panpour|14|water-gun,work-up|gluttony||water
+pansage|14|vine-whip,work-up|gluttony||grass
+
+--2|Lenora|normal|/leaders/blwh-lenora#Black and White
+herdier|18|take-down,bite,retaliate,leer|intimidate||
+watchog|20|leer,crunch,retaliate,hypnosis|illuminate||
+
+--3|Burgh|bug|/leaders/blwh-burgh#Black and White
+whirlipede|21|poison-tail,struggle-bug,screech,pursuit|swarm||
+dwebble|21|smack-down,struggle-bug,sand-attack,feint-attack|shell-armor||
+leavanny|23|razor-leaf,protect,string-shot,struggle-bug|swarm||
+
+--4|Elesa|electric|/leaders/blwh-elesa#Black and White
+emolga|25|volt-switch,aerial-ace,pursuit,quick-attack|static||
+emolga|25|volt-switch,aerial-ace,pursuit,quick-attack|static||
+zebstrika|27|flame-charge,spark,volt-switch,quick-attack|lightning-rod||
+
+--5|Clay|ground|/leaders/blwh-clay#Black and White
+krokorok|29|swagger,crunch,bulldoze,torment|moxie||
+palpitoad|29|aqua-ring,bulldoze,muddy-water,bubble-beam|swift-swim||
+excadrill|31|hone-claws,slash,rock-slide,bulldoze|sand-rush||
+
+--6|Skyla|flying|/leaders/blwh-skyla#Black and White
+swoobat|33|amnesia,heart-stamp,acrobatics,assurance|unaware||
+unfezant|33|quick-attack,razor-wind,air-slash,leer|big-pecks||
+swanna|35|aqua-ring,aerial-ace,air-slash,bubble-beam|keen-eye||
+
+--7|Brycen|ice|/leaders/blwh-brycen#Black and White
+vanillish|37|frost-breath,acid-armor,astonish,mirror-shot|ice-body||
+beartic|39|swagger,icicle-crash,slash,brine|snow-cloak||
+cryogonal|37|aurora-beam,reflect,frost-breath,rapid-spin|levitate||
+
+--8a|Drayden|dragon|/leaders/blwh-drayden#Black
+fraxure|41|dragon-tail,dragon-dance,assurance,dragon-rage|rivalry||
+druddigon|41|night-slash,revenge,dragon-tail,chip-away|rough-skin||
+haxorus|43|dragon-tail,dragon-dance,slash,assurance|mold-breaker||
+
+--8b|Iris|dragon|/leaders/blwh-iris#White
+fraxure|41|dragon-tail,dragon-dance,assurance,dragon-rage|rivalry||
+druddigon|41|night-slash,revenge,dragon-tail,chip-away|rough-skin||
+haxorus|43|dragon-tail,dragon-dance,slash,assurance|mold-breaker||
+
+--e1|Shauntal|ghost|/leaders/blwh-shauntal#Shauntal
+cofagrigus|48|psychic,will-o-wisp,shadow-ball,grass-knot|mummy||
+jellicent|48|shadow-ball,surf,energy-ball,brine|cursed-body||
+golurk|48|curse,brick-break,earthquake,shadow-punch|iron-fist||
+chandelure|50|fire-blast,psychic,shadow-ball,payback|flame-body||
+
+--e2|Grimsley|dark|/leaders/blwh-grimsley#Grimsley
+scrafty|48|sand-attack,crunch,poison-jab,brick-break|moxie||
+krookodile|48|crunch,dragon-claw,foul-play,earthquake|intimidate||
+liepard|48|fake-out,attract,aerial-ace,night-slash|limber||
+bisharp|50|x-scissor,night-slash,metal-claw,aerial-ace|defiant||
+
+--e3|Caitlin|psychic|/leaders/blwh-caitlin#Caitlin
+reuniclus|48|energy-ball,thunder,focus-blast,psychic|magic-guard||
+sigilyph|48|air-slash,shadow-ball,ice-beam,psychic|wonder-skin||
+musharna|48|shadow-ball,psychic,charge-beam,reflect|synchronize||
+gothitelle|50|calm-mind,thunderbolt,psychic,shadow-ball|frisk||
+
+--e4|Marshal|fighting|/leaders/blwh-marshal#Marshal
+throh|48|stone-edge,payback,bulldoze,storm-throw|guts||
+sawk|48|stone-edge,karate-chop,grass-knot,retaliate|sturdy||
+conkeldurr|48|stone-edge,hammer-arm,retaliate,grass-knot|sheer-force||
+mienshao|50|u-turn,jump-kick,rock-slide,retaliate|inner-focus||
+
+--e5|Shauntal|ghost|/leaders/blwh-shauntal#Shauntal
+cofagrigus|71|psychic,will-o-wisp,shadow-ball,energy-ball|mummy||
+jellicent|71|sludge-wave,shadow-ball,hydro-pump,psychic|cursed-body||
+golurk|71|hammer-arm,earthquake,shadow-punch,curse|iron-fist||
+froslass|71|blizzard,ice-shard,shadow-ball,psychic|snow-cloak
+drifblim|71|thunder,shadow-ball,acrobatics,psychic|aftermath
+chandelure|73|fire-blast,psychic,shadow-ball,payback|flame-body||
+
+--e6|Grimsley|dark|/leaders/blwh-grimsley#Grimsley
+sharpedo|71|waterfall,night-slash,earthquake,aqua-jet|rough-skin
+scrafty|71|crunch,poison-jab,head-smash,brick-break|moxie||
+krookodile|71|outrage,earthquake,foul-play,smack-down|intimidate||
+liepard|71|sucker-punch,fake-out,attract,aerial-ace|limber||
+drapion|71|poison-fang,fire-fang,thunder-fang,crunch|battle-armor
+bisharp|73|x-scissor,night-slash,guillotine,aerial-ace|defiant||
+
+--e7|Caitlin|psychic|/leaders/blwh-caitlin#Caitlin
+musharna|71|psychic,reflect,hypnosis,dream-eater|synchronize||
+sigilyph|71|air-slash,flash-cannon,ice-beam,psychic|wonder-skin||
+reuniclus|71|energy-ball,thunder,focus-blast,psychic|magic-guard||
+gothitelle|71|flatter,payback,thunderbolt,psychic|frisk||
+bronzong|71|payback,charge-beam,flash-cannon,psychic|levitate
+metagross|73|bullet-punch,earthquake,zen-headbutt,giga-impact|clear-body
+
+--e8|Marshal|fighting|/leaders/blwh-marshal#Marshal
+breloom|71|spore,grass-knot,sky-uppercut,mach-punch|effect-spore
+throh|71|earthquake,superpower,retaliate,grass-knot|guts||
+sawk|71|close-combat,stone-edge,poison-jab,retaliate|sturdy||
+toxicroak|71|earthquake,low-sweep,toxic,venoshock|anticipation
+mienshao|71|u-turn,high-jump-kick,fake-out,acrobatics|inner-focus||
+conkeldurr|73|stone-edge,hammer-arm,payback,earthquake|sheer-force||
+
+--c|Alder||/leaders/blwh-alder
+accelgor|75|bug-buzz,focus-blast,me-first,energy-ball|hydration
+bouffalant|75|head-charge,megahorn,stone-edge,earthquake|sap-sipper
+druddigon|75|night-slash,payback,outrage,superpower|rough-skin
+vanilluxe|75|blizzard,light-screen,flash-cannon,acid-armor|ice-body
+escavalier|75|x-scissor,giga-impact,iron-head,aerial-ace|swarm
+volcarona|77|overheat,hyper-beam,bug-buzz,quiver-dance|flame-body
+
+--cc|Cynthia||/leaders/dp-cynthia
+spiritomb|75|sucker-punch,shadow-ball,will-o-wisp,double-team|pressure
+eelektross|75|crunch,wild-charge,dragon-claw,flamethrower|levitate
+milotic|75|hydro-pump,dragon-tail,blizzard,bulldoze|marvel-scale
+braviary|75|brave-bird,shadow-claw,crush-claw,retaliate|sheer-force
+lucario|75|extreme-speed,dragon-pulse,close-combat,aura-sphere|steadfast
+garchomp|77|dragon-rush,crunch,earthquake,stone-edge|sand-veil`);
+  registerBattleData('black-2', `--col1|Colress|steel|/leaders/blwh-colress
+magnemite|21|thunder-wave,spark,magnet-bomb|sturdy
+klink|23|charge,thunder-shock,gear-grind|plus
+
+--col2|Colress|steel|/leaders/blwh-colress
+magneton|25|thunder-wave,thunder-shock,supersonic,mirror-shot|sturdy
+elgyem|25|growl,headbutt,psybeam,heal-block|telepathy
+klink|25|charge,thunder-shock,gear-grind,bind|plus
+
+--col3|Colress|steel|/leaders/blwh-colress
+magneton|50|thunder-wave,volt-switch,tri-attack,flash-cannon|sturdy|eviolite
+beheeyem|50|psychic,calm-mind,energy-ball,recover|synchronize
+metang|50|meteor-mash,rock-slide,agility,zen-headbutt|clear-body
+magnezone|50|discharge,thunder-wave,flash-cannon,explosion|sturdy
+klinklang|52|shift-gear,gear-grind,thunderbolt,giga-impact|plus|air-balloon
+
+--zinz1|Zinzolin & Grunt||/leaders/blwh-zinzolin-grunt
+cryogonal|42|light-screen,reflect,slash,ice-beam|levitate
+sneasel|44|snatch,punishment,slash,screech|inner-focus
+golbat|39|air-cutter,acrobatics,mean-look,poison-fang|inner-focus
+garbodor|39|sludge-bomb,clear-smog,toxic,body-slam|weak-armor
+
+--zinz2|Zinzolin||/leaders/blwh-zinzolin
+cryogonal|46|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|46|slash,ice-beam,confuse-ray,reflect|levitate
+weavile|48|slash,metal-claw,night-slash,ice-shard|pressure
+
+--zinz3|Zinzolin & grunt||/leaders/blwh-zinzolin-grunt
+cryogonal|48|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|48|slash,ice-beam,confuse-ray,light-screen|levitate
+weavile|50|slash,metal-claw,night-slash,ice-shard|pressure
+liepard|45|taunt,assurance,night-slash,slash|limber
+watchog|45|slam,hyper-fang,baton-pass,mean-look|illuminate
+scolipede|45|steamroller,agility,baton-pass,toxic|poison-point
+
+--zinz4|Zinzolin||/leaders/blwh-zinzolin
+cryogonal|49|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|49|slash,ice-beam,confuse-ray,light-screen|levitate
+weavile|51|slash,metal-claw,night-slash,ice-shard|pressure
+
+--shad|Shadow||/leaders/blwh-shadow
+pawniard|46|metal-claw,feint-attack,slash,scary-face|defiant
+pawniard|46|metal-claw,feint-attack,slash,scary-face|inner-focus
+absol|48|swords-dance,slash,night-slash,future-sight|super-luck
+
+--ghetsis|Ghetsis||/leaders/blwh-ghetsis-2
+cofagrigus|50|shadow-ball,psychic,protect,toxic|mummy|leftovers
+seismitoad|50|muddy-water,earthquake,drain-punch,sludge-wave|poison-touch
+eelektross|50|flamethrower,acrobatics,thunderbolt,crunch|levitate
+drapion|50|night-slash,earthquake,poison-fang,x-scissor|sniper
+toxicroak|50|brick-break,shadow-ball,sucker-punch,poison-jab|anticipation
+hydreigon|52|dragon-rush,crunch,rock-slide,frustration|levitate|life-orb
+
+--r1|Hugh||/leaders/blwh-hugh
+tepig|5|tackle,tail-whip|blaze||fire
+oshawott|5|tackle,tail-whip|torrent||water
+snivy|5|tackle,leer|overgrow||grass
+
+--r2|Hugh||/leaders/blwh-hugh
+tepig|8|tackle,tail-whip|blaze||fire
+oshawott|8|tackle,tail-whip|torrent||water
+snivy|8|tackle,leer|overgrow||grass
+
+--r3|Hugh||/leaders/blwh-hugh
+pignite|25|take-down,smog,heat-crash,rollout|blaze||fire
+simipour|25|scald,leer,lick,fury-swipes|gluttony||water
+dewott|25|aqua-jet,water-pulse,revenge,fury-cutter|torrent||water
+simisage|25|seed-bomb,leer,lick,fury-swipes|gluttony||grass
+servine|25|leech-seed,leaf-blade,mega-drain,slam|overgrow||grass
+simisear|25|flame-burst,leer,lick,fury-swipes|gluttony||fire
+tranquill|25|air-cutter,roost,taunt,detect|super-luck
+
+--r4|Hugh||/leaders/blwh-hugh
+unfezant|39|taunt,air-slash,razor-wind,detect|super-luck|scope-lens
+simipour|39|scald,leer,lick,fury-swipes|gluttony|mystic-water|water
+simisage|39|seed-bomb,leer,lick,fury-swipes|gluttony|miracle-seed|grass
+simisear|39|flame-burst,leer,lick,fury-swipes|gluttony|charcoal|fire
+emboar|41|take-down,assurance,heat-crash,rollout|blaze|charcoal|fire
+samurott|41|aqua-jet,encore,revenge,slash|torrent|mystic-water|water
+serperior|41|coil,leaf-blade,mega-drain,slam|overgrow|miracle-seed|grass
+
+--r5|Hugh||/leaders/blwh-hugh
+unfezant|55|facade,aerial-ace,u-turn,swagger|super-luck|scope-lens
+simipour|55|surf,rock-slide,crunch,brick-break|gluttony|mystic-water|water
+simisage|55|energy-ball,crunch,brick-break,rock-slide|gluttony|miracle-seed|grass
+simisear|55|rock-slide,crunch,brick-break,flamethrower|gluttony|charcoal|fire
+bouffalant|55|head-charge,wild-charge,megahorn,earthquake|sap-sipper
+emboar|57|flamethrower,rock-slide,brick-break,scald|blaze|charcoal|fire
+samurott|57|surf,x-scissor,revenge,ice-beam|torrent|mystic-water|water
+serperior|57|giga-drain,leaf-blade,dragon-tail,coil|overgrow|miracle-seed|grass
+
+--ch|Cheren|normal|/leaders/blwh-cheren-boss
+stoutland|25|tackle,work-up,odor-sleuth,bite|intimidate
+cinccino|25|sing,work-up,wake-up-slap,bullet-seed|cute-charm
+watchog|25|confuse-ray,work-up,hypnosis,bite|illuminate
+
+--subway|Ingo & Emmet
+gurdurr|26|wake-up-slap,low-kick,rock-throw,chip-away|sheer-force
+boldore|26|iron-defense,mud-slap,power-gem,smack-down|sturdy
+
+--1n|Cheren|normal|/leaders/blwh-cheren-boss
+patrat|11|tackle,work-up,bite|keen-eye
+lillipup|13|tackle,work-up,bite|vital-spirit
+
+--2n|Roxie|poison|/leaders/blwh-roxie
+koffing|16|assurance,tackle,smog|levitate
+whirlipede|18|venoshock,poison-sting,protect,pursuit|poison-point
+
+--3n|Burgh|bug|/leaders/blwh-burgh
+dwebble|22|rock-polish,smack-down,feint-attack,struggle-bug|sturdy
+swadloon|22|string-shot,struggle-bug,protect,razor-leaf|leaf-guard
+leavanny|24|cut,razor-leaf,string-shot,struggle-bug|swarm|sitrus-berry
+
+--4n|Elesa|electric|/leaders/blwh-elesa-2
+emolga|28|quick-attack,pursuit,volt-switch|static
+flaaffy|28|thunder-wave,volt-switch,take-down|static
+zebstrika|30|volt-switch,pursuit,flame-charge,quick-attack|motor-drive|sitrus-berry
+
+--5n|Clay|ground|/leaders/blwh-clay
+krokorok|31|crunch,torment,sand-tomb,bulldoze|intimidate
+sandslash|31|bulldoze,rollout,crush-claw,fury-cutter|sand-veil
+excadrill|33|slash,bulldoze,metal-claw,rock-slide|sand-force|sitrus-berry
+
+--6n|Skyla|flying|/leaders/blwh-skyla
+swoobat|37|heart-stamp,attract,acrobatics,assurance|unaware
+skarmory|37|aerial-ace,steel-wing,fury-attack,agility|sturdy|sitrus-berry
+swanna|39|roost,feather-dance,air-slash,bubble-beam|big-pecks|sitrus-berry
+
+--7n|Drayden|dragon|/leaders/blwh-drayden
+druddigon|46|revenge,crunch,slash,dragon-tail|sheer-force
+flygon|46|rock-slide,dragon-tail,crunch,earth-power|levitate
+haxorus|48|dragon-dance,dragon-tail,slash,assurance|mold-breaker|sitrus-berry
+
+--8n|Marlon|water|/leaders/blwh-marlon
+carracosta|49|smack-down,shell-smash,scald,crunch|sturdy
+wailord|49|scald,amnesia,rollout,bounce|water-veil
+jellicent|51|brine,scald,recover,ominous-wind|cursed-body|sitrus-berry
+
+--e1n|Shauntal|ghost|/leaders/blwh-shauntal
+cofagrigus|56|grass-knot,shadow-ball,will-o-wisp,psychic|mummy
+drifblim|56|acrobatics,thunderbolt,shadow-ball,psychic|aftermath
+golurk|56|heavy-slam,earthquake,brick-break,shadow-punch|iron-fist
+chandelure|58|fire-blast,energy-ball,shadow-ball,psychic|flame-body|sitrus-berry
+
+--e2n|Grimsley|dark|/leaders/blwh-grimsley
+liepard|56|fake-out,attract,night-slash,aerial-ace|limber
+scrafty|56|rock-tomb,crunch,brick-break,poison-jab|moxie
+krookodile|56|crunch,dragon-claw,rock-tomb,earthquake|intimidate
+bisharp|58|night-slash,aerial-ace,x-scissor,metal-claw|defiant|sitrus-berry
+
+--e3n|Caitlin|psychic|/leaders/blwh-caitlin
+musharna|56|reflect,yawn,dream-eater,charge-beam|synchronize
+sigilyph|56|psychic,shadow-ball,ice-beam,air-slash|wonder-skin
+reuniclus|56|psychic,energy-ball,focus-blast,recover|magic-guard
+gothitelle|58|calm-mind,psychic,shadow-ball,thunderbolt|frisk|sitrus-berry
+
+--e4n|Marshal|fighting|/leaders/blwh-marshal
+throh|56|storm-throw,bulldoze,rock-tomb,payback|guts
+sawk|56|brick-break,rock-slide,retaliate,payback|sturdy
+mienshao|56|high-jump-kick,u-turn,bounce,retaliate|regenerator
+conkeldurr|58|hammer-arm,bulk-up,stone-edge,retaliate|sheer-force|sitrus-berry
+
+--cn|Iris||/leaders/blwh-iris-champion
+hydreigon|57|dragon-pulse,surf,flamethrower,charge-beam|levitate
+druddigon|57|dragon-tail,rock-slide,flamethrower,focus-blast|sheer-force|life-orb
+aggron|57|rock-slide,double-edge,earthquake,autotomize|rock-head
+archeops|57|acrobatics,rock-slide,dragon-claw,endeavor|defeatist
+lapras|57|surf,ice-beam,thunderbolt,sing|water-absorb
+haxorus|59|dual-chop,dragon-dance,earthquake,x-scissor|mold-breaker|focus-sash`);
+  registerBattleData('white-2', `--col1|Colress|steel|/leaders/blwh-colress
+magnemite|21|thunder-wave,spark,magnet-bomb|sturdy
+klink|23|charge,thunder-shock,gear-grind|plus
+
+--col2|Colress|steel|/leaders/blwh-colress
+magneton|25|thunder-wave,thunder-shock,supersonic,mirror-shot|sturdy
+elgyem|25|growl,headbutt,psybeam,heal-block|telepathy
+klink|25|charge,thunder-shock,gear-grind,bind|plus
+
+--col3|Colress|steel|/leaders/blwh-colress
+magneton|50|thunder-wave,volt-switch,tri-attack,flash-cannon|sturdy|eviolite
+beheeyem|50|psychic,calm-mind,energy-ball,recover|synchronize
+metang|50|meteor-mash,rock-slide,agility,zen-headbutt|clear-body
+magnezone|50|discharge,thunder-wave,flash-cannon,explosion|sturdy
+klinklang|52|shift-gear,gear-grind,thunderbolt,giga-impact|plus|air-balloon
+
+--zinz1|Zinzolin & Grunt||/leaders/blwh-zinzolin-grunt
+cryogonal|42|light-screen,reflect,slash,ice-beam|levitate
+sneasel|44|snatch,punishment,slash,screech|inner-focus
+golbat|39|air-cutter,acrobatics,mean-look,poison-fang|inner-focus
+garbodor|39|sludge-bomb,clear-smog,toxic,body-slam|weak-armor
+
+--zinz2|Zinzolin||/leaders/blwh-zinzolin
+cryogonal|46|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|46|slash,ice-beam,confuse-ray,reflect|levitate
+weavile|48|slash,metal-claw,night-slash,ice-shard|pressure
+
+--zinz3|Zinzolin & grunt||/leaders/blwh-zinzolin-grunt
+cryogonal|48|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|48|slash,ice-beam,confuse-ray,light-screen|levitate
+weavile|50|slash,metal-claw,night-slash,ice-shard|pressure
+liepard|45|taunt,assurance,night-slash,slash|limber
+watchog|45|slam,hyper-fang,baton-pass,mean-look|illuminate
+scolipede|45|steamroller,agility,baton-pass,toxic|poison-point
+
+--zinz4|Zinzolin||/leaders/blwh-zinzolin
+cryogonal|49|slash,ice-beam,confuse-ray,reflect|levitate
+cryogonal|49|slash,ice-beam,confuse-ray,light-screen|levitate
+weavile|51|slash,metal-claw,night-slash,ice-shard|pressure
+
+--shad|Shadow||/leaders/blwh-shadow
+pawniard|46|metal-claw,feint-attack,slash,scary-face|defiant
+pawniard|46|metal-claw,feint-attack,slash,scary-face|inner-focus
+absol|48|swords-dance,slash,night-slash,future-sight|super-luck
+
+--ghetsis|Ghetsis||/leaders/blwh-ghetsis-2
+cofagrigus|50|shadow-ball,psychic,protect,toxic|mummy|leftovers
+seismitoad|50|muddy-water,earthquake,drain-punch,sludge-wave|poison-touch
+eelektross|50|flamethrower,acrobatics,thunderbolt,crunch|levitate
+drapion|50|night-slash,earthquake,poison-fang,x-scissor|sniper
+toxicroak|50|brick-break,shadow-ball,sucker-punch,poison-jab|anticipation
+hydreigon|52|dragon-rush,crunch,rock-slide,frustration|levitate|life-orb
+
+--r1|Hugh||/leaders/blwh-hugh
+tepig|5|tackle,tail-whip|blaze||fire
+oshawott|5|tackle,tail-whip|torrent||water
+snivy|5|tackle,leer|overgrow||grass
+
+--r2|Hugh||/leaders/blwh-hugh
+tepig|8|tackle,tail-whip|blaze||fire
+oshawott|8|tackle,tail-whip|torrent||water
+snivy|8|tackle,leer|overgrow||grass
+
+--r3|Hugh||/leaders/blwh-hugh
+pignite|25|take-down,smog,heat-crash,rollout|blaze||fire
+simipour|25|scald,leer,lick,fury-swipes|gluttony||water
+dewott|25|aqua-jet,water-pulse,revenge,fury-cutter|torrent||water
+simisage|25|seed-bomb,leer,lick,fury-swipes|gluttony||grass
+servine|25|leech-seed,leaf-blade,mega-drain,slam|overgrow||grass
+simisear|25|flame-burst,leer,lick,fury-swipes|gluttony||fire
+tranquill|25|air-cutter,roost,taunt,detect|super-luck
+
+--r4|Hugh||/leaders/blwh-hugh
+unfezant|39|taunt,air-slash,razor-wind,detect|super-luck|scope-lens
+simipour|39|scald,leer,lick,fury-swipes|gluttony|mystic-water|water
+simisage|39|seed-bomb,leer,lick,fury-swipes|gluttony|miracle-seed|grass
+simisear|39|flame-burst,leer,lick,fury-swipes|gluttony|charcoal|fire
+emboar|41|take-down,assurance,heat-crash,rollout|blaze|charcoal|fire
+samurott|41|aqua-jet,encore,revenge,slash|torrent|mystic-water|water
+serperior|41|coil,leaf-blade,mega-drain,slam|overgrow|miracle-seed|grass
+
+--r5|Hugh||/leaders/blwh-hugh
+unfezant|55|facade,aerial-ace,u-turn,swagger|super-luck|scope-lens
+simipour|55|surf,rock-slide,crunch,brick-break|gluttony|mystic-water|water
+simisage|55|energy-ball,crunch,brick-break,rock-slide|gluttony|miracle-seed|grass
+simisear|55|rock-slide,crunch,brick-break,flamethrower|gluttony|charcoal|fire
+bouffalant|55|head-charge,wild-charge,megahorn,earthquake|sap-sipper
+emboar|57|flamethrower,rock-slide,brick-break,scald|blaze|charcoal|fire
+samurott|57|surf,x-scissor,revenge,ice-beam|torrent|mystic-water|water
+serperior|57|giga-drain,leaf-blade,dragon-tail,coil|overgrow|miracle-seed|grass
+
+--ch|Cheren|normal|/leaders/blwh-cheren-boss
+stoutland|25|tackle,work-up,odor-sleuth,bite|intimidate
+cinccino|25|sing,work-up,wake-up-slap,bullet-seed|cute-charm
+watchog|25|confuse-ray,work-up,hypnosis,bite|illuminate
+
+--subway|Ingo & Emmet
+gurdurr|26|wake-up-slap,low-kick,rock-throw,chip-away|sheer-force
+boldore|26|iron-defense,mud-slap,power-gem,smack-down|sturdy
+
+--1n|Cheren|normal|/leaders/blwh-cheren-boss
+patrat|11|tackle,work-up,bite|keen-eye
+lillipup|13|tackle,work-up,bite|vital-spirit
+
+--2n|Roxie|poison|/leaders/blwh-roxie
+koffing|16|assurance,tackle,smog|levitate
+whirlipede|18|venoshock,poison-sting,protect,pursuit|poison-point
+
+--3n|Burgh|bug|/leaders/blwh-burgh
+dwebble|22|rock-polish,smack-down,feint-attack,struggle-bug|sturdy
+swadloon|22|string-shot,struggle-bug,protect,razor-leaf|leaf-guard
+leavanny|24|cut,razor-leaf,string-shot,struggle-bug|swarm|sitrus-berry
+
+--4n|Elesa|electric|/leaders/blwh-elesa-2
+emolga|28|quick-attack,pursuit,volt-switch|static
+flaaffy|28|thunder-wave,volt-switch,take-down|static
+zebstrika|30|volt-switch,pursuit,flame-charge,quick-attack|motor-drive|sitrus-berry
+
+--5n|Clay|ground|/leaders/blwh-clay
+krokorok|31|crunch,torment,sand-tomb,bulldoze|intimidate
+sandslash|31|bulldoze,rollout,crush-claw,fury-cutter|sand-veil
+excadrill|33|slash,bulldoze,metal-claw,rock-slide|sand-force|sitrus-berry
+
+--6n|Skyla|flying|/leaders/blwh-skyla
+swoobat|37|heart-stamp,attract,acrobatics,assurance|unaware
+skarmory|37|aerial-ace,steel-wing,fury-attack,agility|sturdy|sitrus-berry
+swanna|39|roost,feather-dance,air-slash,bubble-beam|big-pecks|sitrus-berry
+
+--7n|Drayden|dragon|/leaders/blwh-drayden
+druddigon|46|revenge,crunch,slash,dragon-tail|sheer-force
+flygon|46|rock-slide,dragon-tail,crunch,earth-power|levitate
+haxorus|48|dragon-dance,dragon-tail,slash,assurance|mold-breaker|sitrus-berry
+
+--8n|Marlon|water|/leaders/blwh-marlon
+carracosta|49|smack-down,shell-smash,scald,crunch|sturdy
+wailord|49|scald,amnesia,rollout,bounce|water-veil
+jellicent|51|brine,scald,recover,ominous-wind|cursed-body|sitrus-berry
+
+--e1n|Shauntal|ghost|/leaders/blwh-shauntal
+cofagrigus|56|grass-knot,shadow-ball,will-o-wisp,psychic|mummy
+drifblim|56|acrobatics,thunderbolt,shadow-ball,psychic|aftermath
+golurk|56|heavy-slam,earthquake,brick-break,shadow-punch|iron-fist
+chandelure|58|fire-blast,energy-ball,shadow-ball,psychic|flame-body|sitrus-berry
+
+--e2n|Grimsley|dark|/leaders/blwh-grimsley
+liepard|56|fake-out,attract,night-slash,aerial-ace|limber
+scrafty|56|rock-tomb,crunch,brick-break,poison-jab|moxie
+krookodile|56|crunch,dragon-claw,rock-tomb,earthquake|intimidate
+bisharp|58|night-slash,aerial-ace,x-scissor,metal-claw|defiant|sitrus-berry
+
+--e3n|Caitlin|psychic|/leaders/blwh-caitlin
+musharna|56|reflect,yawn,dream-eater,charge-beam|synchronize
+sigilyph|56|psychic,shadow-ball,ice-beam,air-slash|wonder-skin
+reuniclus|56|psychic,energy-ball,focus-blast,recover|magic-guard
+gothitelle|58|calm-mind,psychic,shadow-ball,thunderbolt|frisk|sitrus-berry
+
+--e4n|Marshal|fighting|/leaders/blwh-marshal
+throh|56|storm-throw,bulldoze,rock-tomb,payback|guts
+sawk|56|brick-break,rock-slide,retaliate,payback|sturdy
+mienshao|56|high-jump-kick,u-turn,bounce,retaliate|regenerator
+conkeldurr|58|hammer-arm,bulk-up,stone-edge,retaliate|sheer-force|sitrus-berry
+
+--cn|Iris||/leaders/blwh-iris-champion
+hydreigon|57|dragon-pulse,surf,flamethrower,charge-beam|levitate
+druddigon|57|dragon-tail,rock-slide,flamethrower,focus-blast|sheer-force|life-orb
+aggron|57|rock-slide,double-edge,earthquake,autotomize|rock-head
+archeops|57|acrobatics,rock-slide,dragon-claw,endeavor|defeatist
+lapras|57|surf,ice-beam,thunderbolt,sing|water-absorb
+haxorus|59|dual-chop,dragon-dance,earthquake,x-scissor|mold-breaker|focus-sash`);
+
+
+
 
 BATTLE_DATA['soulsilver']=BATTLE_DATA['heartgold'];
 
@@ -4626,6 +5551,280 @@ Mt. Silver|floor:1F|walk:1:golbat|walk:1:golduck|walk:1:graveler|walk:1:larvitar
 Seafoam Islands|floor:1F|walk:1:golbat|walk:1:golduck|walk:1:psyduck|walk:1:zubat|floor:B1F - B2F|walk:1:golbat|walk:1:golduck|walk:1:psyduck|walk:1:seel|walk:1:zubat|floor:B3F|walk:1:dewgong|walk:1:golbat|walk:1:golduck|walk:1:psyduck|walk:1:seel|walk:1:zubat|floor:B4F|walk:1:dewgong|walk:1:golbat|walk:1:golduck|walk:1:jynx|walk:1:psyduck|walk:1:seel|surf:1:horsea|surf:1:seel|surf:1:slowbro|old-rod:1:krabby|old-rod:1:magikarp|good-rod:1:horsea|good-rod:1:krabby|good-rod:1:magikarp|good-rod:1:psyduck|super-rod:1:gyarados|super-rod:1:horsea|super-rod:1:kingler|super-rod:1:seadra|static:1:articuno
 Cerulean Cave|floor:1F|walk:1:ditto|walk:1:electrode|walk:1:golbat|walk:1:machoke|walk:1:magneton|walk:1:parasect|walk:1:persian|walk:1:wobbuffet|surf:1:golduck|surf:1:psyduck|old-rod:1:magikarp|good-rod:1:goldeen|good-rod:1:magikarp|good-rod:1:poliwag|super-rod:1:gyarados|super-rod:1:poliwag|super-rod:1:poliwhirl|rock-smash:1:geodude|rock-smash:1:graveler|floor:2F|walk:1:ditto|walk:1:electrode|walk:1:golbat|walk:1:kadabra|walk:1:machoke|walk:1:magneton|walk:1:parasect|walk:1:wobbuffet|surf:1:golduck|surf:1:psyduck|old-rod:1:magikarp|good-rod:1:goldeen|good-rod:1:magikarp|good-rod:1:poliwag|super-rod:1:gyarados|super-rod:1:poliwag|super-rod:1:poliwhirl|floor:B1F|walk:1:ditto|walk:1:electrode|walk:1:golbat|walk:1:kadabra|walk:1:machoke|walk:1:magneton|walk:1:parasect|walk:1:wobbuffet|surf:1:golduck|surf:1:psyduck|old-rod:1:magikarp|good-rod:1:goldeen|good-rod:1:magikarp|good-rod:1:poliwag|super-rod:1:gyarados|super-rod:1:poliwag|super-rod:1:poliwhirl|rock-smash:1:geodude|rock-smash:1:graveler|static:1:mewtwo
 Whirl Islands|floor:1F|walk:1:golbat|walk:1:krabby|walk:1:seel|walk:1:zubat|surf:1:horsea|surf:1:tentacool|surf:1:tentacruel|old-rod:1:krabby|old-rod:1:magikarp|good-rod:1:horsea|good-rod:1:krabby|good-rod:1:magikarp|super-rod:1:horsea|super-rod:1:kingler|super-rod:1:krabby|super-rod:1:seadra|floor:B1F|walk:1:golbat|walk:1:krabby|walk:1:seel|walk:1:zubat|floor:B2F|walk:1:golbat|walk:1:krabby|walk:1:seel|walk:1:zubat|surf:1:horsea|surf:1:seadra|surf:1:tentacruel|old-rod:1:krabby|old-rod:1:magikarp|good-rod:1:horsea|good-rod:1:krabby|good-rod:1:magikarp|super-rod:1:horsea|super-rod:1:kingler|super-rod:1:krabby|super-rod:1:seadra|floor:B3F|walk:1:golbat|walk:1:krabby|walk:1:seel|walk:1:zubat|static:1:lugia`);
+  registerGameData('black', `Starter|gift:1:oshawott|gift:1:snivy|gift:1:tepig
+--Nuvema Town|b1|rival|Bianca
+--Nuvema Town|c1|rival|Cheren
+Route 1|walk:1:lillipup|walk:1:patrat|dark-grass:1:herdier|dark-grass:1:scraggy|dark-grass:1:watchog|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:feebas|shaking-grass:1:audino|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:feebas|shaking-rod:1:milotic
+--Accumula Town|n1|evil-team|N
+Route 2|walk:1:lillipup|walk:1:patrat|walk:1:purrloin|shaking-grass:1:audino
+--Route 2|b2|rival|Bianca
+Striaton City|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Tranier's School|c2|rival|Cheren
+--Striaton Gym|1|gym-leader|Chili, Cress or Cilan
+Dreamyard|walk:1:patrat|walk:1:purrloin|walk:1:munna|dark-grass:1:raticate|dark-grass:1:venomoth|dark-grass:1:ledian|dark-grass:1:ariados|dark-grass:1:kricketune|dark-grass:1:watchog|dark-grass:1:liepard|dark-grass:1:munna|shaking-grass:1:musharna|shaking-grass:1:audino|gift:1:pansage|gift:1:pansear|gift:1:panpour|floor:Basement|dark-grass:1:raticate|dark-grass:1:ledian|dark-grass:1:ariados|dark-grass:1:kricketune|dark-grass:1:munna
+Route 3|walk:1:blitzle|walk:1:lillipup|walk:1:patrat|walk:1:pidove|walk:1:purrloin|dark-grass:1:blitzle|dark-grass:1:lillipup|dark-grass:1:patrat|dark-grass:1:pidove|dark-grass:1:purrloin|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Preschool|c3|rival|Cheren
+Wellspring Cave|walk:1:roggenrola|walk:1:woobat|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-cave:1:drilbur
+Nacrene City|fossil:1:tirtouga|fossil:1:archen|trade:cottonee:petilil
+--Nacrene City|n2|rival|N
+--Nacrene Gym|2|gym-leader|Lenora
+Pinwheel Forest|walk:1:pidove|walk:1:sawk|walk:1:timburr|walk:1:tympole|dark-grass:1:pidove|dark-grass:1:sawk|dark-grass:1:timburr|dark-grass:1:tympole|shaking-grass:1:audino|shaking-grass:1:throh|static:1:virizion|floor:Inside|walk:1:cottonee|walk:1:pidove|walk:1:sewaddle|walk:1:venipede|dark-grass:1:cottonee|dark-grass:1:swadloon|dark-grass:1:tranquill|dark-grass:1:whirlipede|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-grass:1:panpour|shaking-grass:1:pansage|shaking-grass:1:pansear|shaking-grass:1:whimsicott|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+Castelia City|gift:1:zorua
+--Castelia Gym|3|gym-leader|Burgh
+--Castelia City|b3|rival|Bianca
+Route 4|walk:1:darumaka|walk:1:sandile|walk:1:scraggy|surf:1:frillish-male|super-rod:1:clamperl|super-rod:1:krabby|super-rod:1:luvdisc|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:huntail|shaking-rod:1:kingler|shaking-rod:1:luvdisc|shaking-rod:1:relicanth
+--Route 4|c4|rival|Cheren
+Desert Resort|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sigilyph|floor:Entrance|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:scraggy|static:1:darmanitan
+Relic Castle|floor:1F · B1F|walk:1:sandile|walk:1:yamask|floor:B2F - B5F|walk:1:krokorok|walk:1:cofagrigus|floor:B6F|walk:1:sandslash|walk:1:krokorok|walk:1:onix|walk:1:cofagrigus|floor:B7F|walk:1:sandslash|walk:1:claydol|walk:1:krokorok|walk:1:onix|walk:1:cofagrigus|static:1:volcarona
+--Nimbasa City|n3|evil-team|N
+--Nimbasa Gym|4|gym-leader|Elesa
+Route 5|walk:1:gothita|walk:1:liepard|walk:1:minccino|walk:1:trubbish|dark-grass:1:gothita|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga
+--Route 5|c5|rival|Cheren
+Driftveil Drawbridge|shaking-bridge:1:ducklett
+Driftveil City|surf:1:frillish-male|super-rod:1:chinchou|super-rod:1:krabby|super-rod:1:luvdisc|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:chinchou|shaking-rod:1:kingler|shaking-rod:1:lanturn|shaking-rod:1:luvdisc|trade:minccino:basculin-red-striped
+Cold Storage|walk:1:herdier|walk:1:minccino|walk:1:timburr|walk:1:vanillite|dark-grass:1:herdier|dark-grass:1:minccino|dark-grass:1:timburr|dark-grass:1:vanillite|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:stoutland
+--Driftveil Gym|5|gym-leader|Clay
+--Driftveil City|b4|rival|Bianca
+Route 6|walk:1:deerling|walk:1:foongus|walk:1:karrablast|walk:1:swadloon|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:karrablast|dark-grass:1:swadloon|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillite[Wi]|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|static:1:foongus
+Mistralton Cave|walk:1:axew|walk:1:boldore|walk:1:woobat|static:1:cobalion|shaking-cave:1:drilbur
+Chargestone Cave|floor:1F - B2F|walk:1:boldore|walk:1:ferroseed|walk:1:joltik|walk:1:klink|walk:1:tynamo|shaking-cave:1:drilbur
+--Chargestone Cave|n4|evil-team|N
+Route 7|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:foongus|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:watchog|walk:1:zebstrika|dark-grass:1:cubchoo[Wi]|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:watchog|dark-grass:1:zebstrika|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|trade:boldore:emolga
+--Mistralton Gym|6|gym-leader|Skyla
+--Route 7|c55|rival|Cheren
+Celestial Tower|floor:2F|walk:1:litwick|floor:3F - 5F|walk:1:elgyem|walk:1:litwick
+Twist Mountain|walk:1:boldore|walk:1:cryogonal[Au]|walk:1:cryogonal[Sp]|walk:1:cryogonal[Su]|walk:1:cryogonal[Wi]|walk:1:cubchoo[Au]|walk:1:cubchoo[Sp]|walk:1:cubchoo[Su]|walk:1:cubchoo[Wi]|walk:1:gurdurr[Au]|walk:1:gurdurr[Sp]|walk:1:gurdurr[Su]|walk:1:gurdurr[Wi]|walk:1:woobat[Au]|walk:1:woobat[Sp]|walk:1:woobat[Su]|walk:1:woobat[Wi]|shaking-cave:1:drilbur
+Icirrus City|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+--Iccirus Gym|7|gym-leader|Brycen
+Dragonspiral Tower|floor:Outside|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:druddigon[Au]|walk:1:druddigon[Sp]|walk:1:druddigon[Su]|walk:1:mienfoo|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:beartic[Wi]|dark-grass:1:druddigon[Au]|dark-grass:1:druddigon[Sp]|dark-grass:1:druddigon[Su]|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillish[Wi]|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:dragonair|super-rod:1:dratini|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:dragonair|shaking-rod:1:dragonite|shaking-rod:1:dratini|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:druddigon[Au]|walk:1:druddigon[Sp]|walk:1:druddigon[Su]|walk:1:mienfoo|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:beartic[Wi]|dark-grass:1:druddigon[Au]|dark-grass:1:druddigon[Sp]|dark-grass:1:druddigon[Su]|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillish[Wi]|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:dragonair|super-rod:1:dratini|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-blue-striped|shaking-rod:1:basculin-blue-striped|shaking-rod:1:dragonair|shaking-rod:1:dragonite|shaking-rod:1:dratini|floor:Entrance|walk:1:cubchoo|walk:1:deerling|walk:1:druddigon|walk:1:mienfoo|walk:1:tranquill|walk:1:vanillite|dark-grass:1:beartic|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:vanillish|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant|floor:1F|walk:1:druddigon|walk:1:golett|walk:1:mienfoo|floor:2F|walk:1:golett|floor:7F|static:1:reshiram
+Route 8|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+--Route 8|b5|rival|Bianca
+Moor Of Icirrus|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+Route 9|walk:1:garbodor|walk:1:gothorita|walk:1:liepard|walk:1:minccino|walk:1:pawniard|dark-grass:1:garbodor|dark-grass:1:gothorita|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:pawniard|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|shaking-grass:1:gothitelle
+--Opelucid Gym|8a|gym-leader|Drayden
+Route 10|walk:1:bouffalant|walk:1:foongus|walk:1:herdier|walk:1:sawk|walk:1:vullaby|dark-grass:1:amoonguss|dark-grass:1:bouffalant|dark-grass:1:herdier|dark-grass:1:sawk|dark-grass:1:vullaby|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:stoutland|shaking-grass:1:throh|static:1:amoonguss|static:1:foongus
+--Route 10|c6|rival|Cheren
+Victory Road|floor:Outside|walk:1:fraxure|walk:1:mienfoo|walk:1:heatmor|walk:1:vullaby|floor:1F (Middle & Right)|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|walk:1:deino|shaking-cave:1:excadrill|surf:1:basculin-red-striped|shaking-surf:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|super-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-blue-striped|floor:1F (Left) · 2F-7F|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|shaking-cave:1:excadrill|floor:Trial Chamber|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|shaking-cave:1:excadrill|static:1:terrakion
+--Pokémon League W Room|e1|elite-four|Shauntal
+--Pokémon League NW Room|e2|elite-four|Grimsley
+--Pokémon League NE Room|e3|elite-four|Caitlin
+--Pokémon League E Room|e4|elite-four|Marshal
+--N's Castle|n5a|evil-team|N
+--N's Castle|gh|evil-team|Ghetsis
+--Victory Road|c7|rival|Cheren
+--Pokémon League W Room|e5|elite-four|Shauntal
+--Pokémon League NW Room|e6|elite-four|Grimsley
+--Pokémon League NE Room|e7|elite-four|Caitlin
+--Pokémon League E Room|e8|elite-four|Marshal
+--Pokémon League Champion|c|elite-four|Alder
+Route 18|walk:1:dwebble|walk:1:sawk|walk:1:scraggy|walk:1:watchog|dark-grass:1:crustle|dark-grass:1:sawk|dark-grass:1:scraggy|dark-grass:1:watchog|surf:1:frillish-male|super-rod:1:chinchou|super-rod:1:finneon|super-rod:1:horsea|shaking-grass:1:audino|shaking-grass:1:throh|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:kingdra|shaking-rod:1:lumineon|shaking-rod:1:qwilfish|shaking-rod:1:seadra|gift:1:larvesta`);
+  registerGameData('white', `Starter|gift:1:oshawott|gift:1:snivy|gift:1:tepig
+--Nuvema Town|b1|rival|Bianca
+--Nuvema Town|c1|rival|Cheren
+Route 1|walk:1:lillipup|walk:1:patrat|dark-grass:1:herdier|dark-grass:1:scraggy|dark-grass:1:watchog|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:feebas|shaking-grass:1:audino|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:feebas|shaking-rod:1:milotic
+--Accumula Town|n1|evil-team|N
+Route 2|walk:1:lillipup|walk:1:patrat|walk:1:purrloin|shaking-grass:1:audino
+--Route 2|b2|rival|Bianca
+Striaton City|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Tranier's School|c2|rival|Cheren
+--Striaton Gym|1|gym-leader|Chili, Cress or Cilan
+Dreamyard|walk:1:patrat|walk:1:purrloin|walk:1:munna|dark-grass:1:raticate|dark-grass:1:venomoth|dark-grass:1:ledian|dark-grass:1:ariados|dark-grass:1:kricketune|dark-grass:1:watchog|dark-grass:1:liepard|dark-grass:1:munna|shaking-grass:1:musharna|shaking-grass:1:audino|gift:1:pansage|gift:1:pansear|gift:1:panpour|floor:Basement|dark-grass:1:raticate|dark-grass:1:ledian|dark-grass:1:ariados|dark-grass:1:kricketune|dark-grass:1:munna
+Route 3|walk:1:blitzle|walk:1:lillipup|walk:1:patrat|walk:1:pidove|walk:1:purrloin|dark-grass:1:blitzle|dark-grass:1:lillipup|dark-grass:1:patrat|dark-grass:1:pidove|dark-grass:1:purrloin|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Preschool|c3|rival|Cheren
+Wellspring Cave|walk:1:roggenrola|walk:1:woobat|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-cave:1:drilbur
+Nacrene City|fossil:1:tirtouga|fossil:1:archen|trade:petilil:cottonee
+--Nacrene City|n2|rival|N
+--Nacrene Gym|2|gym-leader|Lenora
+Pinwheel Forest|walk:1:pidove|walk:1:throh|walk:1:timburr|walk:1:tympole|dark-grass:1:pidove|dark-grass:1:throh|dark-grass:1:timburr|dark-grass:1:tympole|shaking-grass:1:audino|shaking-grass:1:sawk|static:1:virizion|floor:Inside|walk:1:petilil|walk:1:pidove|walk:1:sewaddle|walk:1:venipede|dark-grass:1:petilil|dark-grass:1:swadloon|dark-grass:1:tranquill|dark-grass:1:whirlipede|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-grass:1:lilligant|shaking-grass:1:panpour|shaking-grass:1:pansage|shaking-grass:1:pansear|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+Castelia City|gift:1:zorua
+--Castelia Gym|3|gym-leader|Burgh
+--Castelia City|b3|rival|Bianca
+Route 4|walk:1:darumaka|walk:1:sandile|walk:1:scraggy|surf:1:frillish-male|super-rod:1:clamperl|super-rod:1:krabby|super-rod:1:luvdisc|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:gorebyss|shaking-rod:1:kingler|shaking-rod:1:luvdisc|shaking-rod:1:relicanth
+--Route 4|c4|rival|Cheren
+Desert Resort|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sigilyph|floor:Entrance|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:scraggy|static:1:darmanitan
+Relic Castle|floor:1F · B1F|walk:1:sandile|walk:1:yamask|floor:B2F - B5F|walk:1:krokorok|walk:1:cofagrigus|floor:B6F|walk:1:sandslash|walk:1:krokorok|walk:1:onix|walk:1:cofagrigus|floor:B7F|walk:1:sandslash|walk:1:claydol|walk:1:krokorok|walk:1:onix|walk:1:cofagrigus|static:1:volcarona
+--Nimbasa City|n3|evil-team|N
+--Nimbasa Gym|4|gym-leader|Elesa
+Route 5|walk:1:liepard|walk:1:minccino|walk:1:solosis|walk:1:trubbish|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:solosis|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga
+--Route 5|c5|rival|Cheren
+Driftveil Drawbridge|shaking-bridge:1:ducklett
+Driftveil City|surf:1:frillish-male|super-rod:1:chinchou|super-rod:1:krabby|super-rod:1:luvdisc|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:chinchou|shaking-rod:1:kingler|shaking-rod:1:lanturn|shaking-rod:1:luvdisc|trade:minccino:basculin-blue-striped
+Cold Storage|walk:1:herdier|walk:1:minccino|walk:1:timburr|walk:1:vanillite|dark-grass:1:herdier|dark-grass:1:minccino|dark-grass:1:timburr|dark-grass:1:vanillite|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:stoutland
+--Driftveil Gym|5|gym-leader|Clay
+--Driftveil City|b4|rival|Bianca
+Route 6|walk:1:deerling|walk:1:foongus|walk:1:karrablast|walk:1:swadloon|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:karrablast|dark-grass:1:swadloon|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillite[Wi]|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|static:1:foongus
+Mistralton Cave|walk:1:axew|walk:1:boldore|walk:1:woobat|static:1:cobalion|shaking-cave:1:drilbur
+Chargestone Cave|floor:1F - B2F|walk:1:boldore|walk:1:ferroseed|walk:1:joltik|walk:1:klink|walk:1:tynamo|shaking-cave:1:drilbur
+--Chargestone Cave|n4|evil-team|N
+Route 7|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:foongus|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:watchog|walk:1:zebstrika|dark-grass:1:cubchoo[Wi]|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:watchog|dark-grass:1:zebstrika|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|trade:boldore:emolga
+--Mistralton Gym|6|gym-leader|Skyla
+--Route 7|c55|rival|Cheren
+Celestial Tower|floor:2F|walk:1:litwick|floor:3F - 5F|walk:1:elgyem|walk:1:litwick
+Twist Mountain|walk:1:boldore|walk:1:cryogonal[Au]|walk:1:cryogonal[Sp]|walk:1:cryogonal[Su]|walk:1:cryogonal[Wi]|walk:1:cubchoo[Au]|walk:1:cubchoo[Sp]|walk:1:cubchoo[Su]|walk:1:cubchoo[Wi]|walk:1:gurdurr[Au]|walk:1:gurdurr[Sp]|walk:1:gurdurr[Su]|walk:1:gurdurr[Wi]|walk:1:woobat[Au]|walk:1:woobat[Sp]|walk:1:woobat[Su]|walk:1:woobat[Wi]|shaking-cave:1:drilbur
+Icirrus City|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+--Iccirus Gym|7|gym-leader|Brycen
+Dragonspiral Tower|floor:Outside|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:druddigon[Au]|walk:1:druddigon[Sp]|walk:1:druddigon[Su]|walk:1:mienfoo|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:beartic[Wi]|dark-grass:1:druddigon[Au]|dark-grass:1:druddigon[Sp]|dark-grass:1:druddigon[Su]|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillish[Wi]|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:dragonair|super-rod:1:dratini|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:dragonair|shaking-rod:1:dragonite|shaking-rod:1:dratini|walk:1:cubchoo[Wi]|walk:1:deerling|walk:1:druddigon[Au]|walk:1:druddigon[Sp]|walk:1:druddigon[Su]|walk:1:mienfoo|walk:1:tranquill[Au]|walk:1:tranquill[Sp]|walk:1:tranquill[Su]|walk:1:vanillite[Wi]|dark-grass:1:beartic[Wi]|dark-grass:1:druddigon[Au]|dark-grass:1:druddigon[Sp]|dark-grass:1:druddigon[Su]|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:tranquill[Au]|dark-grass:1:tranquill[Sp]|dark-grass:1:tranquill[Su]|dark-grass:1:vanillish[Wi]|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:dragonair|super-rod:1:dratini|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant[Au]|shaking-grass:1:unfezant[Sp]|shaking-grass:1:unfezant[Su]|shaking-surf:1:basculin-red-striped|shaking-rod:1:basculin-red-striped|shaking-rod:1:dragonair|shaking-rod:1:dragonite|shaking-rod:1:dratini|floor:Entrance|walk:1:cubchoo|walk:1:deerling|walk:1:druddigon|walk:1:mienfoo|walk:1:tranquill|walk:1:vanillite|dark-grass:1:beartic|dark-grass:1:mienfoo|dark-grass:1:sawsbuck|dark-grass:1:vanillish|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant|floor:1F|walk:1:druddigon|walk:1:golett|walk:1:mienfoo|floor:2F|walk:1:golett|floor:7F|static:1:zekrom
+Route 8|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+--Route 8|b5|rival|Bianca
+Moor Of Icirrus|walk:1:palpitoad[Au]|walk:1:palpitoad[Sp]|walk:1:palpitoad[Su]|walk:1:shelmet[Au]|walk:1:shelmet[Sp]|walk:1:shelmet[Su]|walk:1:stunfisk[Au]|walk:1:stunfisk[Sp]|walk:1:stunfisk[Su]|surf:1:stunfisk|super-rod:1:barboach|super-rod:1:stunfisk|shaking-surf:1:seismitoad|shaking-surf:1:stunfisk|shaking-rod:1:barboach|shaking-rod:1:stunfisk|shaking-rod:1:whiscash
+Route 9|walk:1:duosion|walk:1:garbodor|walk:1:liepard|walk:1:minccino|walk:1:pawniard|dark-grass:1:duosion|dark-grass:1:garbodor|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:pawniard|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|shaking-grass:1:reuniclus
+--Opelucid Gym|8b|gym-leader|Iris
+Route 10|walk:1:bouffalant|walk:1:foongus|walk:1:herdier|walk:1:rufflet|walk:1:throh|dark-grass:1:amoonguss|dark-grass:1:bouffalant|dark-grass:1:herdier|dark-grass:1:rufflet|dark-grass:1:throh|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:sawk|shaking-grass:1:stoutland|static:1:amoonguss|static:1:foongus
+--Route 10|c6|rival|Cheren
+Victory Road|floor:Outside|walk:1:fraxure|walk:1:mienfoo|walk:1:heatmor|walk:1:rufflet|floor:1F (Middle & Right)|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|walk:1:deino|shaking-cave:1:excadrill|surf:1:basculin-blue-striped|shaking-surf:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|super-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-red-striped|floor:1F (Left) · 2F-7F|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|shaking-cave:1:excadrill|floor:Trial Chamber|walk:1:boldore|walk:1:woobat|walk:1:mienfoo|walk:1:durant|shaking-cave:1:excadrill|static:1:terrakion
+--Pokémon League W Room|e1|elite-four|Shauntal
+--Pokémon League NW Room|e2|elite-four|Grimsley
+--Pokémon League NE Room|e3|elite-four|Caitlin
+--Pokémon League E Room|e4|elite-four|Marshal
+--N's Castle|n5b|evil-team|N
+--N's Castle|gh|evil-team|Ghetsis
+--Victory Road|c7|rival|Cheren
+--Pokémon League W Room|e5|elite-four|Shauntal
+--Pokémon League NW Room|e6|elite-four|Grimsley
+--Pokémon League NE Room|e7|elite-four|Caitlin
+--Pokémon League E Room|e8|elite-four|Marshal
+--Pokémon League Champion|c|elite-four|Alder
+Route 18|walk:1:dwebble|walk:1:scraggy|walk:1:throh|walk:1:watchog|dark-grass:1:crustle|dark-grass:1:scraggy|dark-grass:1:throh|dark-grass:1:watchog|surf:1:frillish-male|super-rod:1:chinchou|super-rod:1:finneon|super-rod:1:horsea|shaking-grass:1:audino|shaking-grass:1:sawk|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:kingdra|shaking-rod:1:lumineon|shaking-rod:1:qwilfish|shaking-rod:1:seadra|gift:1:larvesta`);
+  registerGameData('black-2', `Starter|gift:1:snivy|gift:1:tepig|gift:1:oshawott
+Aspertia City|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-rod:1:basculin-blue-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Aspertia City|r1|rival|Hugh
+Route 19|walk:1:patrat|walk:1:purrloin|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-rod:1:basculin-blue-striped|shaking-grass:1:patrat|shaking-rod:1:politoed|shaking-rod:1:poliwhirl
+Route 20|walk:1:patrat|walk:1:pidove|walk:1:purrloin|walk:1:sewaddle|walk:1:sunkern|dark-grass:1:patrat|dark-grass:1:pidove|dark-grass:1:purrloin|dark-grass:1:sewaddle|dark-grass:1:sunkern|dark-grass:1:venipede|surf:1:azurill|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-blue-striped|shaking-grass:1:dunsparce|shaking-surf:1:marill|shaking-rod:1:politoed|shaking-rod:1:poliwhirl
+Floccesy Ranch|walk:1:azurill|walk:1:lillipup|walk:1:mareep|walk:1:patrat|walk:1:pidove|walk:1:psyduck|walk:1:riolu|surf:1:azurill|surf:1:basculin-red-striped|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-surf:1:azumarill|shaking-surf:1:marill|shaking-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:politoed|shaking-grass:1:audino|shaking-grass:1:dunsparce|hidden-hollow:1:marill|hidden-hollow:1:dunsparce|hidden-hollow:1:herdier
+--Floccesy Ranch|r2|rival|Hugh
+--Aspertia City Gym|1n|gym-leader|Cheren
+Virbank City|surf:1:frillish-male|super-rod:1:finneon|super-rod:1:krabby|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:kingler|shaking-rod:1:krabby|shaking-rod:1:lumineon
+--Virbank City Gym|2n|gym-leader|Roxie
+Virbank Complex|floor:Outer|walk:1:magby|walk:1:magnemite|walk:1:patrat|walk:1:pidove|surf:1:frillish-male|super-rod:1:finneon|super-rod:1:krabby|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-grass:1:audino|shaking-surf:1:jellicent-male|shaking-rod:1:kingler|shaking-rod:1:krabby|shaking-rod:1:lumineon|floor:Inner|walk:1:growlithe|walk:1:koffing|walk:1:magby|walk:1:magnemite|walk:1:patrat|dark-grass:1:growlithe|dark-grass:1:koffing|dark-grass:1:magby|dark-grass:1:magnemite|dark-grass:1:patrat|shaking-grass:1:audino
+Castelia City|walk:1:buneary|walk:1:cottonee|walk:1:eevee|walk:1:pidove|walk:1:rattata|dark-grass:1:buneary|dark-grass:1:cottonee|dark-grass:1:eevee|dark-grass:1:pidove|dark-grass:1:rattata|shaking-grass:1:audino|shaking-grass:1:lopunny|shaking-grass:1:whimsicott|gift:1:eevee
+--Castelia City Gym|3n|gym-leader|Burgh
+Castelia Sewers|walk:1:grimer|walk:1:rattata|walk:1:zubat|surf:1:grimer|super-rod:1:grimer|shaking-grass:1:grimer|shaking-grass:1:muk
+Relic Passage|floor:Room 1|walk:1:boldore|walk:1:woobat|walk:1:onix|walk:1:gurdurr|shaking-cave:1:drilbur|shaking-cave:1:onix|floor:Room 2|walk:1:boldore|walk:1:woobat|walk:1:onix|walk:1:raticate|walk:1:gurdurr|shaking-cave:1:drilbur|shaking-cave:1:onix|surf:1:marill|surf:1:basculin-red-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-blue-striped|floor:Room 3|walk:1:roggenrola|walk:1:woobat|walk:1:onix|walk:1:rattata|walk:1:timburr|shaking-cave:1:drilbur|shaking-cave:1:onix
+Route 4|walk:1:darumaka|walk:1:sandile|walk:1:scraggy|walk:1:trubbish|surf:1:frillish-male|super-rod:1:clamperl|super-rod:1:finneon|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-rod:1:huntail|shaking-surf:1:jellicent-male|shaking-rod:1:lumineon|shaking-rod:1:qwilfish|shaking-rod:1:relicanth|static:1:mandibuzz|trade:cottonee:petilil
+--Route 4|col1|evil-team|Colress
+Desert Resort|floor:Desert|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sandshrew|walk:1:sigilyph|walk:1:trapinch|floor:Entrance|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sandshrew|walk:1:scraggy
+Relic Castle|floor:1F · B1F|walk:1:sandile|walk:1:yamask|walk:1:sandshrew|floor:B2F - B5F|walk:1:sandile|walk:1:yamask|walk:1:sandslash|walk:1:krokorok|floor:B6F · B7F|walk:1:baltoy|static:1:volcarona
+--Nimbasa Subway|subway|rival|Ingo & Emmet
+--Nimbasa City Gym|4n|gym-leader|Elesa
+Route 16|walk:1:gothita|walk:1:liepard|walk:1:minccino|walk:1:trubbish|dark-grass:1:gothita|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga
+Lostlorn Forest|walk:1:combee|walk:1:cottonee|walk:1:heracross|walk:1:roselia|walk:1:swadloon|walk:1:venipede|dark-grass:1:combee|dark-grass:1:cottonee|dark-grass:1:heracross|dark-grass:1:roselia|dark-grass:1:swadloon|dark-grass:1:whirlipede|surf:1:basculin-red-striped|surf:1:buizel|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-rod:1:basculin-blue-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:leavanny|shaking-grass:1:panpour|shaking-grass:1:pansage|shaking-grass:1:pansear|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|shaking-grass:1:roserade|shaking-grass:1:vespiquen|shaking-grass:1:whimsicott|hidden-hollow:1:pinsir|hidden-hollow:1:heracross|hidden-hollow:1:combee|hidden-hollow:1:leavanny
+Route 5|walk:1:gothita|walk:1:liepard|walk:1:minccino|walk:1:trubbish|dark-grass:1:gothita|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|hidden-hollow:1:liepard|hidden-hollow:1:minccino|hidden-hollow:1:foongus
+Driftveil Drawbridge|shaking-bridge:1:ducklett
+Driftveil City|gift:1:zorua
+--Driftveil City Gym|5n|gym-leader|Clay
+--Driftveil Tournament Round 1|r3|rival|Hugh
+--Driftveil Tournament Round 2|ch|rival|Cheren
+--Driftveil Tournament Round 3|col2|rival|Colress
+Route 6|walk:1:deerling|walk:1:foongus|walk:1:karrablast|walk:1:marill|walk:1:shelmet|walk:1:swadloon|walk:1:tranquill|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:karrablast|dark-grass:1:marill|dark-grass:1:shelmet|dark-grass:1:swadloon|dark-grass:1:tranquill|surf:1:basculin-red-striped|surf:1:marill|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-blue-striped|shaking-grass:1:castform|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-surf:1:marill|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|shaking-grass:1:unfezant|gift:1:deerling|static:1:foongus|floor:Grotto (near Pokémon Breeder)|hidden-hollow:1:dunsparce|hidden-hollow:1:woobat|hidden-hollow:1:foongus|floor:Grotto (Mistralton Cave)|hidden-hollow:1:nosepass|hidden-hollow:1:woobat|hidden-hollow:1:foongus
+Mistralton Cave|walk:1:aron|walk:1:axew|walk:1:boldore|walk:1:woobat|shaking-cave:1:drilbur
+--Mistralton City Gym|6n|gym-leader|Skyla
+Chargestone Cave|floor:1F - B2F|walk:1:boldore|walk:1:ferroseed|walk:1:joltik|walk:1:klink|walk:1:nosepass|walk:1:tynamo|shaking-cave:1:drilbur
+Route 7|walk:1:cubchoo|walk:1:deerling|walk:1:foongus|walk:1:seviper|walk:1:tranquill|walk:1:watchog|walk:1:zangoose|walk:1:zebstrika|dark-grass:1:cubchoo|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:seviper|dark-grass:1:tranquill|dark-grass:1:watchog|dark-grass:1:zangoose|dark-grass:1:zebstrika|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant|static:1:foongus|hidden-hollow:1:zangoose|hidden-hollow:1:seviper|hidden-hollow:1:watchog|hidden-hollow:1:cubchoo|trade:emolga:gigalith
+Celestial Tower|floor:2F|walk:1:litwick|floor:3F - 5F|walk:1:elgyem|walk:1:golbat|walk:1:litwick
+Reversal Mountain|floor:Outside|walk:1:skorupi|walk:1:skarmory|walk:1:spoink|walk:1:grumpig|walk:1:trapinch|walk:1:drifblim|dark-grass:1:grumpig|dark-grass:1:skorupi|dark-grass:1:vibrava|dark-grass:1:skarmory|dark-grass:1:drifblim|shaking-grass:1:audino|floor:B1F · Rooms|walk:1:boldore|walk:1:woobat|walk:1:grumpig|walk:1:spoink|walk:1:skorupi|shaking-cave:1:excadrill|floor:B1F (Heatran)|static:1:heatran
+Strange House|floor:1F · B1F|walk:1:banette|walk:1:golbat|walk:1:gothita|walk:1:gothorita|walk:1:litwick|walk:1:raticate
+Undella Town|surf:1:basculin-red-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:basculin-blue-striped|shaking-rod:1:cloyster|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|shaking-surf:1:staryu
+--Undella Town|r4|rival|Hugh
+Undella Bay|surf:1:frillish-male|surf:1:mantyke|surf:1:remoraid|surf:1:spheal|super-rod:1:chinchou|super-rod:1:remoraid|shaking-rod:1:chinchou|shaking-surf:1:jellicent-male|shaking-rod:1:lanturn|shaking-surf:1:mantine|shaking-rod:1:octillery|shaking-rod:1:remoraid|shaking-surf:1:sealeo|shaking-surf:1:wailmer|shaking-surf:1:wailord|shaking-surf:1:walrein|static:1:jellicent-male
+Route 13|walk:1:absol|walk:1:drifblim|walk:1:lunatone|walk:1:pelipper|walk:1:solrock|walk:1:tangela|dark-grass:1:absol|dark-grass:1:drifblim|dark-grass:1:lunatone|dark-grass:1:pelipper|dark-grass:1:solrock|dark-grass:1:tangela|surf:1:basculin-red-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-grass:1:audino|shaking-rod:1:basculin-blue-striped|shaking-rod:1:cloyster|shaking-grass:1:emolga|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|shaking-surf:1:staryu|shaking-grass:1:tangrowth|static:1:cobalion|floor:Grotto (Stairs)|hidden-hollow:1:spheal|hidden-hollow:1:drifloon|hidden-hollow:1:foongus|floor:Grotto (Giant Chasm)|hidden-hollow:1:tangela|hidden-hollow:1:skorupi|hidden-hollow:1:foongus
+--Lacunosa Town|zinz1|evil-team|Zinzolin & Grunt
+Route 12|walk:1:combee|walk:1:heracross|walk:1:roselia|walk:1:sewaddle|walk:1:tranquill|dark-grass:1:combee|dark-grass:1:heracross|dark-grass:1:roselia|dark-grass:1:sewaddle|dark-grass:1:tranquill|shaking-grass:1:audino|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-grass:1:roserade|shaking-grass:1:unfezant|shaking-grass:1:vespiquen
+Village Bridge|walk:1:golduck|walk:1:marill|walk:1:seviper|walk:1:zangoose|dark-grass:1:golduck|dark-grass:1:marill|dark-grass:1:seviper|dark-grass:1:zangoose|surf:1:basculin-red-striped|surf:1:marill|super-rod:1:basculin-red-striped|super-rod:1:carvanha|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-blue-striped|shaking-rod:1:carvanha|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-surf:1:lapras|shaking-surf:1:marill|shaking-rod:1:sharpedo
+Route 11|walk:1:amoonguss|walk:1:gligar|walk:1:golduck|walk:1:karrablast|walk:1:marill|walk:1:seviper|walk:1:shelmet|walk:1:zangoose|dark-grass:1:amoonguss|dark-grass:1:gligar|dark-grass:1:golduck|dark-grass:1:karrablast|dark-grass:1:marill|dark-grass:1:seviper|dark-grass:1:shelmet|dark-grass:1:zangoose|surf:1:basculin-red-striped|surf:1:buizel|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-blue-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:gliscor|shaking-rod:1:goldeen|shaking-rod:1:seaking|static:1:amoonguss|static:1:virizion
+Route 9|walk:1:garbodor|walk:1:gothorita|walk:1:liepard|walk:1:minccino|walk:1:muk|walk:1:pawniard|dark-grass:1:garbodor|dark-grass:1:gothorita|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:muk|dark-grass:1:pawniard|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|shaking-grass:1:gothitelle|hidden-hollow:1:muk|hidden-hollow:1:liepard|hidden-hollow:1:garbodor|hidden-hollow:1:bouffalant
+--Opelucid City Gym|7n|gym-leader|Drayden
+--Opelucid City|zinz2|evil-team|Zinzolin
+--Opelucid City|shad|evil-team|Shadow
+Seaside Cave|floor:1F|walk:1:boldore|walk:1:golduck|walk:1:seel|walk:1:tynamo|walk:1:woobat|surf:1:frillish-male|surf:1:seel|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:cloyster|shaking-surf:1:dewgong|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-surf:1:seel|shaking-rod:1:shellder|static:1:crustle|shaking-cave:1:excadrill|floor:B1F|walk:1:boldore|walk:1:eelektrik|walk:1:golduck|walk:1:shuckle|walk:1:woobat|shaking-cave:1:excadrill
+Route 21|surf:1:frillish-male|surf:1:mantyke|surf:1:remoraid|super-rod:1:luvdisc|super-rod:1:remoraid|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-surf:1:mantine|shaking-rod:1:octillery|shaking-rod:1:remoraid
+Humilau City|surf:1:basculin-red-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:basculin-blue-striped|shaking-rod:1:cloyster|shaking-surf:1:corsola|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|trade:mantine:tangrowth
+--Humilau City Gym|8n|gym-leader|Marlon
+Route 22|walk:1:amoonguss|walk:1:delibird|walk:1:golduck|walk:1:lunatone|walk:1:marill|walk:1:mienfoo|walk:1:pelipper|walk:1:solrock|dark-grass:1:amoonguss|dark-grass:1:delibird|dark-grass:1:golduck|dark-grass:1:lunatone|dark-grass:1:marill|dark-grass:1:mienfoo|dark-grass:1:pelipper|dark-grass:1:solrock|surf:1:basculin-red-striped|surf:1:marill|super-rod:1:basculin-red-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-blue-striped|shaking-grass:1:emolga|shaking-rod:1:goldeen|shaking-surf:1:marill|shaking-rod:1:seaking|static:1:amoonguss|static:1:terrakion|hidden-hollow:1:pelipper|hidden-hollow:1:amoonguss|hidden-hollow:1:mienfoo
+--Command Center|zinz3|evil-team|Zinzolin & grunt
+--Kyurem's Location|zinz4|evil-team|Zinzolin
+--Control Room|col3|evil-team|Colress
+Giant Chasm|floor:Outside|walk:1:tangela|walk:1:delibird|walk:1:clefairy|walk:1:pelipper|walk:1:lunatone|walk:1:solrock|walk:1:vanillish|dark-grass:1:tangela|dark-grass:1:delibird|dark-grass:1:clefairy|dark-grass:1:pelipper|dark-grass:1:lunatone|dark-grass:1:solrock|dark-grass:1:vanillish|shaking-grass:1:audino|shaking-grass:1:clefable|shaking-grass:1:tangrowth|shaking-grass:1:vanilluxe|floor:Plains|walk:1:clefairy|walk:1:piloswine|walk:1:delibird|walk:1:ditto|walk:1:lunatone|walk:1:solrock|walk:1:metang|dark-grass:1:clefairy|dark-grass:1:piloswine|dark-grass:1:delibird|dark-grass:1:ditto|dark-grass:1:lunatone|dark-grass:1:solrock|dark-grass:1:metang|shaking-grass:1:audino|shaking-grass:1:clefable|shaking-grass:1:metagross|shaking-grass:1:mamoswine|surf:1:basculin-red-striped|surf:1:seel|super-rod:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-blue-striped|shaking-surf:1:seel|shaking-surf:1:dewgong|shaking-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|floor:Cave|walk:1:piloswine|walk:1:delibird|walk:1:clefairy|walk:1:sneasel|walk:1:lunatone|walk:1:solrock|walk:1:vanillish|shaking-cave:1:excadrill|surf:1:basculin-red-striped|surf:1:seel|super-rod:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-blue-striped|shaking-surf:1:seel|shaking-surf:1:dewgong|shaking-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|static:1:kyurem
+--Giant Chasm|ghetsis|evil-team|Ghetsis
+Route 23|walk:1:amoonguss|walk:1:bouffalant|walk:1:gligar|walk:1:golduck|walk:1:mienfoo|walk:1:sawk|walk:1:vullaby|dark-grass:1:amoonguss|dark-grass:1:bouffalant|dark-grass:1:gligar|dark-grass:1:golduck|dark-grass:1:mienshao|dark-grass:1:sawk|dark-grass:1:vullaby|surf:1:basculin-red-striped|surf:1:buizel|super-rod:1:basculin-red-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-rod:1:basculin-blue-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:gliscor|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-grass:1:throh|static:1:amoonguss|static:1:azelf|hidden-hollow:1:golduck|hidden-hollow:1:gligar|hidden-hollow:1:zangoose|hidden-hollow:1:seviper|hidden-hollow:1:absol
+Victory Road|floor:Outside|walk:1:tranquill|walk:1:altaria|dark-grass:1:tranquill|dark-grass:1:altaria|shaking-grass:1:audino|shaking-grass:1:unfezant|shaking-grass:1:dunsparce|surf:1:buizel|surf:1:basculin-red-striped|shaking-surf:1:buizel|shaking-surf:1:floatzel|shaking-surf:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:politoed|shaking-rod:1:basculin-blue-striped|floor:1F · 3F|walk:1:banette|walk:1:golurk|surf:1:marill|surf:1:basculin-red-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-blue-striped|floor:2F|walk:1:boldore|walk:1:onix|shaking-cave:1:excadrill|shaking-cave:1:onix|floor:4F|walk:1:boldore|walk:1:onix|shaking-cave:1:excadrill|shaking-cave:1:onix|surf:1:marill|surf:1:basculin-red-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-blue-striped|floor:Cliff|walk:1:gurdurr|walk:1:throh|dark-grass:1:gurdurr|dark-grass:1:throh|shaking-grass:1:audino|shaking-grass:1:sawk|floor:Forest|walk:1:roselia|walk:1:cottonee|dark-grass:1:roselia|dark-grass:1:cottonee|shaking-grass:1:audino|shaking-grass:1:roserade|shaking-grass:1:whimsicott|shaking-grass:1:dunsparce|floor:N's Castle|walk:1:druddigon|walk:1:zweilous|shaking-cave:1:excadrill|shaking-cave:1:onix
+--Victory Road|r5|rival|Hugh
+--Pokémon League W Room|e1n|elite-four|Shauntal
+--Pokémon League NW Room|e2n|elite-four|Grimsley
+--Pokémon League NE Room|e3n|elite-four|Caitlin
+--Pokémon League E Room|e4n|elite-four|Marshal
+--Pokémon League Champion|cn|elite-four|Iris`);
+  registerGameData('white-2', `Starter|gift:1:snivy|gift:1:tepig|gift:1:oshawott
+Aspertia City|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-rod:1:basculin-red-striped|shaking-rod:1:goldeen|shaking-rod:1:seaking
+--Aspertia City|r1|rival|Hugh
+Route 19|walk:1:patrat|walk:1:purrloin|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-rod:1:basculin-red-striped|shaking-grass:1:patrat|shaking-rod:1:politoed|shaking-rod:1:poliwhirl
+Route 20|walk:1:patrat|walk:1:pidove|walk:1:purrloin|walk:1:sewaddle|walk:1:sunkern|dark-grass:1:patrat|dark-grass:1:pidove|dark-grass:1:purrloin|dark-grass:1:sewaddle|dark-grass:1:sunkern|dark-grass:1:venipede|surf:1:azurill|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-red-striped|shaking-grass:1:dunsparce|shaking-surf:1:marill|shaking-rod:1:politoed|shaking-rod:1:poliwhirl
+Floccesy Ranch|walk:1:azurill|walk:1:lillipup|walk:1:mareep|walk:1:patrat|walk:1:pidove|walk:1:psyduck|walk:1:riolu|surf:1:azurill|surf:1:basculin-blue-striped|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-surf:1:azumarill|shaking-surf:1:marill|shaking-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:politoed|shaking-grass:1:audino|shaking-grass:1:dunsparce|hidden-hollow:1:marill|hidden-hollow:1:dunsparce|hidden-hollow:1:herdier
+--Floccesy Ranch|r2|rival|Hugh
+--Aspertia City Gym|1n|gym-leader|Cheren
+Virbank City|surf:1:frillish-male|super-rod:1:finneon|super-rod:1:krabby|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:kingler|shaking-rod:1:krabby|shaking-rod:1:lumineon
+--Virbank City Gym|2n|gym-leader|Roxie
+Virbank Complex|floor:Outer|walk:1:elekid|walk:1:magnemite|walk:1:patrat|walk:1:pidove|surf:1:frillish-male|super-rod:1:finneon|super-rod:1:krabby|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-grass:1:audino|shaking-surf:1:jellicent-male|shaking-rod:1:kingler|shaking-rod:1:krabby|shaking-rod:1:lumineon|floor:Inner|walk:1:elekid|walk:1:growlithe|walk:1:koffing|walk:1:magnemite|walk:1:patrat|dark-grass:1:elekid|dark-grass:1:growlithe|dark-grass:1:koffing|dark-grass:1:magnemite|dark-grass:1:patrat|shaking-grass:1:audino
+Castelia City|walk:1:eevee|walk:1:petilil|walk:1:pidove|walk:1:rattata|walk:1:skitty|dark-grass:1:eevee|dark-grass:1:petilil|dark-grass:1:pidove|dark-grass:1:rattata|dark-grass:1:skitty|shaking-grass:1:audino|shaking-grass:1:delcatty|shaking-grass:1:lilligant|gift:1:eevee
+--Castelia City Gym|3n|gym-leader|Burgh
+Castelia Sewers|walk:1:grimer|walk:1:rattata|walk:1:zubat|surf:1:grimer|super-rod:1:grimer|shaking-grass:1:grimer|shaking-grass:1:muk
+Relic Passage|floor:Room 1|walk:1:boldore|walk:1:woobat|walk:1:onix|walk:1:gurdurr|shaking-cave:1:drilbur|shaking-cave:1:onix|floor:Room 2|walk:1:boldore|walk:1:woobat|walk:1:onix|walk:1:raticate|walk:1:gurdurr|shaking-cave:1:drilbur|shaking-cave:1:onix|surf:1:marill|surf:1:basculin-blue-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-red-striped|floor:Room 3|walk:1:roggenrola|walk:1:woobat|walk:1:onix|walk:1:rattata|walk:1:timburr|shaking-cave:1:drilbur|shaking-cave:1:onix
+Route 4|walk:1:darumaka|walk:1:minccino|walk:1:sandile|walk:1:scraggy|surf:1:frillish-male|super-rod:1:clamperl|super-rod:1:finneon|super-rod:1:qwilfish|shaking-surf:1:alomomola|shaking-rod:1:gorebyss|shaking-surf:1:jellicent-male|shaking-rod:1:lumineon|shaking-rod:1:qwilfish|shaking-rod:1:relicanth|static:1:braviary|trade:petilil:cottonee
+--Route 4|col1|evil-team|Colress
+Desert Resort|floor:Desert|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sandshrew|walk:1:sigilyph|walk:1:trapinch|floor:Entrance|walk:1:darumaka|walk:1:dwebble|walk:1:maractus|walk:1:sandile|walk:1:sandshrew|walk:1:scraggy
+Relic Castle|floor:1F · B1F|walk:1:sandile|walk:1:yamask|walk:1:sandshrew|floor:B2F - B5F|walk:1:sandile|walk:1:yamask|walk:1:sandslash|walk:1:krokorok|floor:B6F · B7F|walk:1:baltoy|static:1:volcarona
+--Nimbasa Subway|subway|rival|Ingo & Emmet
+--Nimbasa City Gym|4n|gym-leader|Elesa
+Route 16|walk:1:liepard|walk:1:minccino|walk:1:solosis|walk:1:trubbish|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:solosis|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga
+Lostlorn Forest|walk:1:combee|walk:1:petilil|walk:1:pinsir|walk:1:roselia|walk:1:swadloon|walk:1:venipede|dark-grass:1:combee|dark-grass:1:petilil|dark-grass:1:pinsir|dark-grass:1:roselia|dark-grass:1:swadloon|dark-grass:1:whirlipede|surf:1:basculin-blue-striped|surf:1:buizel|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-rod:1:basculin-red-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:leavanny|shaking-grass:1:lilligant|shaking-grass:1:panpour|shaking-grass:1:pansage|shaking-grass:1:pansear|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|shaking-grass:1:roserade|shaking-grass:1:vespiquen|hidden-hollow:1:pinsir|hidden-hollow:1:heracross|hidden-hollow:1:combee|hidden-hollow:1:leavanny
+Route 5|walk:1:liepard|walk:1:minccino|walk:1:solosis|walk:1:trubbish|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:solosis|dark-grass:1:trubbish|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|hidden-hollow:1:liepard|hidden-hollow:1:minccino|hidden-hollow:1:foongus
+Driftveil Drawbridge|shaking-bridge:1:ducklett
+Driftveil City|gift:1:zorua
+--Driftveil City Gym|5n|gym-leader|Clay
+--Driftveil Tournament Round 1|r3|rival|Hugh
+--Driftveil Tournament Round 2|ch|rival|Cheren
+--Driftveil Tournament Round 3|col2|rival|Colress
+Route 6|walk:1:deerling|walk:1:foongus|walk:1:karrablast|walk:1:marill|walk:1:shelmet|walk:1:swadloon|walk:1:tranquill|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:karrablast|dark-grass:1:marill|dark-grass:1:shelmet|dark-grass:1:swadloon|dark-grass:1:tranquill|surf:1:basculin-blue-striped|surf:1:marill|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-red-striped|shaking-grass:1:castform|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-surf:1:marill|shaking-rod:1:politoed|shaking-rod:1:poliwhirl|shaking-grass:1:unfezant|gift:1:deerling|static:1:foongus|floor:Grotto (near Pokémon Breeder)|hidden-hollow:1:dunsparce|hidden-hollow:1:woobat|hidden-hollow:1:foongus|floor:Grotto (Mistralton Cave)|hidden-hollow:1:nosepass|hidden-hollow:1:woobat|hidden-hollow:1:foongus
+Mistralton Cave|walk:1:aron|walk:1:axew|walk:1:boldore|walk:1:woobat|shaking-cave:1:drilbur
+--Mistralton City Gym|6n|gym-leader|Skyla
+Chargestone Cave|floor:1F - B2F|walk:1:boldore|walk:1:ferroseed|walk:1:joltik|walk:1:klink|walk:1:nosepass|walk:1:tynamo|shaking-cave:1:drilbur
+Route 7|walk:1:cubchoo|walk:1:deerling|walk:1:foongus|walk:1:seviper|walk:1:tranquill|walk:1:watchog|walk:1:zangoose|walk:1:zebstrika|dark-grass:1:cubchoo|dark-grass:1:deerling|dark-grass:1:foongus|dark-grass:1:seviper|dark-grass:1:tranquill|dark-grass:1:watchog|dark-grass:1:zangoose|dark-grass:1:zebstrika|shaking-grass:1:audino|shaking-grass:1:emolga|shaking-grass:1:unfezant|static:1:foongus|hidden-hollow:1:zangoose|hidden-hollow:1:seviper|hidden-hollow:1:watchog|hidden-hollow:1:cubchoo|trade:emolga:gigalith
+Celestial Tower|floor:2F|walk:1:litwick|floor:3F - 5F|walk:1:elgyem|walk:1:golbat|walk:1:litwick
+Reversal Mountain|floor:Outside|walk:1:skorupi|walk:1:skarmory|walk:1:numel|walk:1:camerupt|walk:1:trapinch|walk:1:drifblim|dark-grass:1:camerupt|dark-grass:1:skorupi|dark-grass:1:vibrava|dark-grass:1:skarmory|dark-grass:1:drifblim|shaking-grass:1:audino|floor:B1F · Rooms|walk:1:boldore|walk:1:woobat|walk:1:camerupt|walk:1:numel|walk:1:skorupi|shaking-cave:1:excadrill|floor:B1F (Heatran)|static:1:heatran
+Strange House|floor:1F · B1F|walk:1:banette|walk:1:duosion|walk:1:golbat|walk:1:litwick|walk:1:raticate|walk:1:solosis
+Undella Town|surf:1:basculin-blue-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:basculin-red-striped|shaking-rod:1:cloyster|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|shaking-surf:1:staryu
+--Undella Town|r4|rival|Hugh
+Undella Bay|surf:1:frillish-male|surf:1:mantyke|surf:1:remoraid|surf:1:spheal|super-rod:1:chinchou|super-rod:1:remoraid|shaking-rod:1:chinchou|shaking-surf:1:jellicent-male|shaking-rod:1:lanturn|shaking-surf:1:mantine|shaking-rod:1:octillery|shaking-rod:1:remoraid|shaking-surf:1:sealeo|shaking-surf:1:wailmer|shaking-surf:1:wailord|shaking-surf:1:walrein|static:1:jellicent-male
+Route 13|walk:1:absol|walk:1:drifblim|walk:1:lunatone|walk:1:pelipper|walk:1:solrock|walk:1:tangela|dark-grass:1:absol|dark-grass:1:drifblim|dark-grass:1:lunatone|dark-grass:1:pelipper|dark-grass:1:solrock|dark-grass:1:tangela|surf:1:basculin-blue-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-grass:1:audino|shaking-rod:1:basculin-red-striped|shaking-rod:1:cloyster|shaking-grass:1:emolga|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|shaking-surf:1:staryu|shaking-grass:1:tangrowth|static:1:cobalion|floor:Grotto (Stairs)|hidden-hollow:1:spheal|hidden-hollow:1:drifloon|hidden-hollow:1:foongus|floor:Grotto (Giant Chasm)|hidden-hollow:1:tangela|hidden-hollow:1:skorupi|hidden-hollow:1:foongus
+--Lacunosa Town|zinz1|evil-team|Zinzolin & Grunt
+Route 12|walk:1:combee|walk:1:pinsir|walk:1:roselia|walk:1:sewaddle|walk:1:tranquill|dark-grass:1:combee|dark-grass:1:pinsir|dark-grass:1:roselia|dark-grass:1:sewaddle|dark-grass:1:tranquill|shaking-grass:1:audino|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-grass:1:leavanny|shaking-grass:1:roserade|shaking-grass:1:unfezant|shaking-grass:1:vespiquen
+Village Bridge|walk:1:golduck|walk:1:marill|walk:1:seviper|walk:1:zangoose|dark-grass:1:golduck|dark-grass:1:marill|dark-grass:1:seviper|dark-grass:1:zangoose|surf:1:basculin-blue-striped|surf:1:marill|super-rod:1:basculin-blue-striped|super-rod:1:carvanha|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-red-striped|shaking-rod:1:carvanha|shaking-grass:1:dunsparce|shaking-grass:1:emolga|shaking-surf:1:lapras|shaking-surf:1:marill|shaking-rod:1:sharpedo
+Route 11|walk:1:amoonguss|walk:1:gligar|walk:1:golduck|walk:1:karrablast|walk:1:marill|walk:1:seviper|walk:1:shelmet|walk:1:zangoose|dark-grass:1:amoonguss|dark-grass:1:gligar|dark-grass:1:golduck|dark-grass:1:karrablast|dark-grass:1:marill|dark-grass:1:seviper|dark-grass:1:shelmet|dark-grass:1:zangoose|surf:1:basculin-blue-striped|surf:1:buizel|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-red-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:gliscor|shaking-rod:1:goldeen|shaking-rod:1:seaking|static:1:amoonguss|static:1:virizion
+Route 9|walk:1:duosion|walk:1:garbodor|walk:1:liepard|walk:1:minccino|walk:1:muk|walk:1:pawniard|dark-grass:1:duosion|dark-grass:1:garbodor|dark-grass:1:liepard|dark-grass:1:minccino|dark-grass:1:muk|dark-grass:1:pawniard|shaking-grass:1:audino|shaking-grass:1:cinccino|shaking-grass:1:emolga|shaking-grass:1:reuniclus|hidden-hollow:1:muk|hidden-hollow:1:liepard|hidden-hollow:1:garbodor|hidden-hollow:1:bouffalant
+--Opelucid City Gym|7n|gym-leader|Drayden
+--Opelucid City|zinz2|evil-team|Zinzolin
+--Opelucid City|shad|evil-team|Shadow
+Seaside Cave|floor:1F|walk:1:boldore|walk:1:golduck|walk:1:seel|walk:1:tynamo|walk:1:woobat|surf:1:frillish-male|surf:1:seel|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:cloyster|shaking-surf:1:dewgong|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-surf:1:seel|shaking-rod:1:shellder|static:1:crustle|shaking-cave:1:excadrill|floor:B1F|walk:1:boldore|walk:1:eelektrik|walk:1:golduck|walk:1:shuckle|walk:1:woobat|shaking-cave:1:excadrill
+Route 21|surf:1:frillish-male|surf:1:mantyke|surf:1:remoraid|super-rod:1:luvdisc|super-rod:1:remoraid|shaking-surf:1:alomomola|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-surf:1:mantine|shaking-rod:1:octillery|shaking-rod:1:remoraid
+Humilau City|surf:1:basculin-blue-striped|surf:1:frillish-male|surf:1:staryu|super-rod:1:luvdisc|super-rod:1:shellder|shaking-rod:1:basculin-red-striped|shaking-rod:1:cloyster|shaking-surf:1:corsola|shaking-surf:1:jellicent-male|shaking-rod:1:luvdisc|shaking-rod:1:shellder|shaking-surf:1:starmie|trade:mantine:tangrowth
+--Humilau City Gym|8n|gym-leader|Marlon
+Route 22|walk:1:amoonguss|walk:1:delibird|walk:1:golduck|walk:1:lunatone|walk:1:marill|walk:1:mienfoo|walk:1:pelipper|walk:1:solrock|dark-grass:1:amoonguss|dark-grass:1:delibird|dark-grass:1:golduck|dark-grass:1:lunatone|dark-grass:1:marill|dark-grass:1:mienfoo|dark-grass:1:pelipper|dark-grass:1:solrock|surf:1:basculin-blue-striped|surf:1:marill|super-rod:1:basculin-blue-striped|super-rod:1:goldeen|shaking-grass:1:audino|shaking-surf:1:azumarill|shaking-rod:1:basculin-red-striped|shaking-grass:1:emolga|shaking-rod:1:goldeen|shaking-surf:1:marill|shaking-rod:1:seaking|static:1:amoonguss|static:1:terrakion|hidden-hollow:1:pelipper|hidden-hollow:1:amoonguss|hidden-hollow:1:mienfoo
+--Command Center|zinz3|evil-team|Zinzolin & grunt
+--Kyurem's Location|zinz4|evil-team|Zinzolin
+--Control Room|col3|evil-team|Colress
+Giant Chasm|floor:Outside|walk:1:tangela|walk:1:delibird|walk:1:clefairy|walk:1:pelipper|walk:1:lunatone|walk:1:solrock|walk:1:vanillish|dark-grass:1:tangela|dark-grass:1:delibird|dark-grass:1:clefairy|dark-grass:1:pelipper|dark-grass:1:lunatone|dark-grass:1:solrock|dark-grass:1:vanillish|shaking-grass:1:audino|shaking-grass:1:clefable|shaking-grass:1:tangrowth|shaking-grass:1:vanilluxe|floor:Plains|walk:1:clefairy|walk:1:piloswine|walk:1:delibird|walk:1:ditto|walk:1:lunatone|walk:1:solrock|walk:1:metang|dark-grass:1:clefairy|dark-grass:1:piloswine|dark-grass:1:delibird|dark-grass:1:ditto|dark-grass:1:lunatone|dark-grass:1:solrock|dark-grass:1:metang|shaking-grass:1:audino|shaking-grass:1:clefable|shaking-grass:1:metagross|shaking-grass:1:mamoswine|surf:1:basculin-blue-striped|surf:1:seel|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-red-striped|shaking-surf:1:seel|shaking-surf:1:dewgong|shaking-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|floor:Cave|walk:1:piloswine|walk:1:delibird|walk:1:clefairy|walk:1:sneasel|walk:1:lunatone|walk:1:solrock|walk:1:vanillish|shaking-cave:1:excadrill|surf:1:basculin-blue-striped|surf:1:seel|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|super-rod:1:poliwhirl|shaking-surf:1:basculin-red-striped|shaking-surf:1:seel|shaking-surf:1:dewgong|shaking-rod:1:basculin-red-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|static:1:kyurem
+--Giant Chasm|ghetsis|evil-team|Ghetsis
+Route 23|walk:1:amoonguss|walk:1:bouffalant|walk:1:gligar|walk:1:golduck|walk:1:mienfoo|walk:1:rufflet|walk:1:throh|dark-grass:1:amoonguss|dark-grass:1:bouffalant|dark-grass:1:gligar|dark-grass:1:golduck|dark-grass:1:mienshao|dark-grass:1:rufflet|dark-grass:1:throh|surf:1:basculin-blue-striped|surf:1:buizel|super-rod:1:basculin-blue-striped|super-rod:1:poliwag|shaking-grass:1:audino|shaking-rod:1:basculin-red-striped|shaking-rod:1:buizel|shaking-grass:1:emolga|shaking-rod:1:floatzel|shaking-grass:1:gliscor|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-grass:1:sawk|static:1:amoonguss|static:1:azelf|hidden-hollow:1:golduck|hidden-hollow:1:gligar|hidden-hollow:1:zangoose|hidden-hollow:1:seviper|hidden-hollow:1:absol
+Victory Road|floor:Outside|walk:1:tranquill|walk:1:altaria|dark-grass:1:tranquill|dark-grass:1:altaria|shaking-grass:1:audino|shaking-grass:1:unfezant|shaking-grass:1:dunsparce|surf:1:buizel|surf:1:basculin-blue-striped|shaking-surf:1:buizel|shaking-surf:1:floatzel|shaking-surf:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:politoed|shaking-rod:1:basculin-red-striped|floor:1F · 3F|walk:1:banette|walk:1:golurk|surf:1:marill|surf:1:basculin-blue-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-red-striped|floor:2F|walk:1:boldore|walk:1:onix|shaking-cave:1:excadrill|shaking-cave:1:onix|floor:4F|walk:1:boldore|walk:1:onix|shaking-cave:1:excadrill|shaking-cave:1:onix|surf:1:marill|surf:1:basculin-blue-striped|shaking-surf:1:marill|shaking-surf:1:azumarill|shaking-surf:1:basculin-red-striped|super-rod:1:poliwag|super-rod:1:basculin-blue-striped|shaking-rod:1:poliwhirl|shaking-rod:1:poliwrath|shaking-rod:1:basculin-red-striped|floor:Cliff|walk:1:gurdurr|walk:1:throh|dark-grass:1:gurdurr|dark-grass:1:throh|shaking-grass:1:audino|shaking-grass:1:sawk|floor:Forest|walk:1:roselia|walk:1:petilil|dark-grass:1:roselia|dark-grass:1:petilil|shaking-grass:1:audino|shaking-grass:1:roserade|shaking-grass:1:lilligant|shaking-grass:1:dunsparce|floor:N's Castle|walk:1:druddigon|walk:1:zweilous|shaking-cave:1:excadrill|shaking-cave:1:onix
+--Victory Road|r5|rival|Hugh
+--Pokémon League W Room|e1n|elite-four|Shauntal
+--Pokémon League NW Room|e2n|elite-four|Grimsley
+--Pokémon League NE Room|e3n|elite-four|Caitlin
+--Pokémon League E Room|e4n|elite-four|Marshal
+--Pokémon League Champion|cn|elite-four|Iris`);
+
+
+
+
 
 BATTLE_DATA['soulsilver']=BATTLE_DATA['heartgold'];
 BATTLE_DATA['pearl']=BATTLE_DATA['diamond'];
@@ -5074,7 +6273,7 @@ function setRegFilter(btn, f){
 }
 
 // Build a master list of every Pokémon across all registered game data
-function getAllRegistryPokemon(){
+function getAllRegistryPokemon(gameFilter){
   const map={}; // normName -> {name, status, catchCount, obtainable}
 
   // Seed with EVERY Gen 1-3 Pokémon from DEX_NUM — unobtainable by default
@@ -5190,10 +6389,11 @@ function getAllRegistryPokemon(){
     ['noibat','noivern'],['xerneas'],['yveltal'],['zygarde'],['diancie'],['hoopa'],['volcanion'],
   ];
 
-  // Build catchable set from route data
+  // Build catchable set from route data (filtered by selected game if any)
   const catchable=new Set();
-  Object.values(GAME_TXT).forEach(entries=>{
-    entries.forEach(entry=>{
+  const gameKeys=gameFilter?[gameFilter]:Object.keys(GAME_TXT);
+  gameKeys.forEach(gid=>{
+    (GAME_TXT[gid]||[]).forEach(entry=>{
       if(entry.kind!=='route') return;
       (entry.pokemon||[]).forEach(p=>catchable.add(norm(p)));
     });
@@ -5225,6 +6425,29 @@ function getAllRegistryPokemon(){
         if(cur==='never') map[key].status='alive';
       }
     });
+  });
+
+  // Propagate caught status across entire evolution family
+  // If Weedle is caught/alive, Kakuna and Beedrill also show as caught
+  EVO_FAMILIES.forEach(family=>{
+    const normFam=family.map(norm);
+    // Find highest-priority status in the family
+    let highest='never';
+    normFam.forEach(m=>{
+      const s=(map[m]||{}).status||'never';
+      if(s==='dead'||(s==='champion'&&highest!=='dead')||(s==='alive'&&highest==='never')) highest=s;
+    });
+    // Propagate to whole family (but don't overwrite a higher status)
+    if(highest!=='never'){
+      normFam.forEach(m=>{
+        if(map[m]){
+          const cur=map[m].status;
+          if(cur==='never') map[m].status=highest;
+          // Don't downgrade dead/champion to alive
+          if(cur==='alive'&&(highest==='dead'||highest==='champion')) map[m].status=highest;
+        }
+      });
+    }
   });
 
   // Check bans
@@ -5427,7 +6650,16 @@ function renderRegistry(){
   if(!grid) return;
 
   const search=(document.getElementById('reg-search')?.value||'').toLowerCase().trim();
-  const all=getAllRegistryPokemon();
+  const gameFilter=(document.getElementById('reg-game-filter')?.value||'');
+  const obtainableOnly=document.getElementById('reg-obtainable-only')?.checked||false;
+
+  // Populate game dropdown if empty
+  const sel=document.getElementById('reg-game-filter');
+  if(sel&&sel.options.length===1){
+    GAMES.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.n;sel.appendChild(o);});
+  }
+
+  const all=getAllRegistryPokemon(gameFilter);
 
   const nDead=all.filter(p=>p.status==='dead').length;
   const nChamp=all.filter(p=>p.status==='champion').length;
@@ -5436,8 +6668,10 @@ function renderRegistry(){
   if(statsEl) statsEl.textContent=`${all.length} Pokémon tracked · ${nAlive} alive · ${nChamp} retired · ${nDead} fallen · ${nNever} never caught`;
 
   let filtered=all;
+  if(obtainableOnly) filtered=filtered.filter(p=>p.obtainable);
   if(search) filtered=filtered.filter(p=>p.name.includes(search)||p.name.replace(/-/g,' ').includes(search));
   if(_regFilter==='caught') filtered=filtered.filter(p=>p.status!=='never');
+  else if(_regFilter==='available') filtered=filtered.filter(p=>p.status!=='dead'&&p.status!=='champion');
   else if(_regFilter==='alive') filtered=filtered.filter(p=>p.status==='alive');
   else if(_regFilter==='dead') filtered=filtered.filter(p=>p.status==='dead');
   else if(_regFilter==='champion') filtered=filtered.filter(p=>p.status==='champion');
@@ -6483,11 +7717,11 @@ function renderRouteBody(gameId, entry){
   const METHOD_LABEL={
     'walk':'Tall Grass','cave':'Cave','surf':'Surfing',
     'old-rod':'Old Rod','good-rod':'Good Rod','super-rod':'Super Rod',
-    'headbutt':'Headbutt','secret-tree':'Secret Tree (Headbutt)','rock-smash':'Rock Smash','swarm':'Swarm',
+    'headbutt':'Headbutt','secret-tree':'Secret Tree (Headbutt)','shaking-area':'Shaking Area','shaking-grass':'Shaking Grass','shaking-cave':'Shaking Cave','shaking-surf':'Shaking Surf','shaking-rod':'Shaking Rod','shaking-bridge':'Bridge Shadow','dark-grass':'Dark Grass','hidden-hollow':'Hidden Hollow','rock-smash':'Rock Smash','swarm':'Swarm',
     'dive':'Dive','gift':'Gift','static':'Static Encounter','event':'Event',
     'trade':'Trade','fossil':'Fossil Revival','game-corner':'Game Corner','honey-tree':'Honey Tree'
   };
-  const METHOD_ORDER=['walk','cave','surf','old-rod','good-rod','super-rod','headbutt','secret-tree','rock-smash','dive','swarm','gift','static','event','trade','fossil','game-corner','honey-tree'];
+  const METHOD_ORDER=['walk','dark-grass','cave','surf','old-rod','good-rod','super-rod','shaking-area','shaking-grass','shaking-cave','shaking-surf','shaking-rod','shaking-bridge','headbutt','hidden-hollow','secret-tree','rock-smash','dive','swarm','gift','static','event','trade','fossil','game-corner','honey-tree'];
   const TIME_METHODS=new Set(['walk','cave']);
   const TIME_FLOORS=new Set(['Morning','Day','Night']);
   const TIME_ORDER=['Morning','Day','Night'];
@@ -6562,6 +7796,17 @@ function renderRouteBody(gameId, entry){
       }
     }
 
+    // Season icons (rounded squares: spring=green summer=yellow autumn=orange winter=blue)
+    const mSeasons=(info.methods[method]||{}).seasons||new Set();
+    let seasonLine='';
+    if(mSeasons.size>0&&mSeasons.size<4){
+      const SALL=['Sp','Su','Au','Wi'];
+      const SC={Sp:'sc-spring',Su:'sc-summer',Au:'sc-autumn',Wi:'sc-winter'};
+      const ST={Sp:'Spring',Su:'Summer',Au:'Autumn',Wi:'Winter'};
+      const dots=SALL.filter(s=>mSeasons.has(s)).map(s=>`<span class="sc ${SC[s]}" title="${ST[s]}"></span>`).join('');
+      seasonLine=`<div class="ptile-seasons">${dots}</div>`;
+    }
+
     // Trade give note
     const tradeLine=info.give?`<div class="ptile-trade">give ${info.give.replace(/-/g,' ')}</div>`:'';
 
@@ -6581,7 +7826,7 @@ function renderRouteBody(gameId, entry){
       ${skull}${check}
       ${spr}
       <div class="ptile-name">${info.name.replace(/-/g,' ')}</div>
-      ${timeLine}${tradeLine}
+      ${timeLine}${seasonLine}${tradeLine}
     </div>`;
   }
 
@@ -6601,8 +7846,9 @@ function renderRouteBody(gameId, entry){
         const k=norm(p);
         let entry_=methodMap[m].find(e=>norm(e.name)===k);
         if(!entry_){ entry_={name:p,methods:{},give:g.give||null}; methodMap[m].push(entry_); }
-        if(!entry_.methods[m]) entry_.methods[m]={times:new Set()};
+        if(!entry_.methods[m]) entry_.methods[m]={times:new Set(),seasons:new Set()};
         if(g._timeTag) entry_.methods[m].times.add(g._timeTag);
+        if(g.pokeSeasons&&g.pokeSeasons[p]) g.pokeSeasons[p].forEach(s=>entry_.methods[m].seasons.add(s));
       });
     });
     const sortedMethods=Object.keys(methodMap).sort((a,b)=>{
@@ -6644,9 +7890,15 @@ function renderRouteBody(gameId, entry){
           html+=renderGroups([...tagged,...sharedTime]);
         }
 
+        // Base floor (null-name) — rendered before structural floors
+        const baseFloor=entry.floorGroups.find(f=>!f.name);
+        if(baseFloor&&baseFloor.groups.length>0){
+          html+=renderGroups(baseFloor.groups);
+        }
+
         // Structural floors with labelled section headers
         structFloors.forEach((fl,fi)=>{
-          const borderTop=(timeFloors.length>0||fi>0)?`border-top:1px solid var(--border);margin-top:4px;padding-top:2px;`:'';
+          const borderTop=(timeFloors.length>0||baseFloor||fi>0)?`border-top:1px solid var(--border);margin-top:4px;padding-top:2px;`:'';
           const label=`<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.08em;padding:8px 12px 0;text-transform:uppercase;">— ${fl.name} —</div>`;
           html+=`<div style="${borderTop}">${label}${renderGroups(fl.groups)}</div>`;
         });
@@ -7747,4 +8999,4 @@ renderDash();
 initGitHubSync();
 </script>
 </body>
-</html>
+</html>,'black','white'
